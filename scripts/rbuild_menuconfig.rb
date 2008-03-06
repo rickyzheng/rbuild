@@ -105,6 +105,9 @@ module RBuild
         fun = Win32API.new("crtdll", "_getch", [], 'L')
         fun.call
       else
+        if ARGV[0] && ARGV[0] == "run_in_nb"
+          return STDIN.getc
+        end
         system("stty raw")
         system("stty -echo")
         s = STDIN.read(1)
@@ -226,7 +229,7 @@ module RBuild
         show_choice_input(node, values, cursor)
       end      
     end
-    
+
     # values is an array of Hash{:value =>?, :selected =>?, :desc => ?}
     def show_choice_input(node, values, cursor)
       clear_screen()      

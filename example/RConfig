@@ -14,12 +14,13 @@ end
 
 group "RBuild System Options" do
   choice :RBUILD_SYS_CONFIG_FILE => "RBuild Configuration File" do
-    no_export    # do not export this choice, it's for rbuild system.
+    property :no_export    # do not export this choice, it's for rbuild system.
     default '.config'
   end
   
   choice :RBUILD_PLUGIN_EXP_C_HEADER_FILE => "RBuild Export File" do
-    no_export     # do not export this choice, it's for rbuild system.
+    property :no_export     # do not export this choice, it's for rbuild system.
+    property :hidden_a
     default 'uconfig.h'
   end
 end

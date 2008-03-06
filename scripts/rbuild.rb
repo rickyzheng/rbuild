@@ -35,7 +35,7 @@ module RBuild
             :children => [],
             :value => true,
             :depends =>[],
-            }
+          }
       @current[:parent] = @current[:key]			
       @conf[@current[:key]] = @current
       @nodes = [@current]
@@ -46,11 +46,12 @@ module RBuild
       @top_worker_path = File.expand_path(Dir.pwd)
       @top_rconfig_path = @top_worker_path
       @curpath = @top_worker_path
-      log_to_file(nil)
+      
+      log_to_file(nil) # just delete the log file
       
       if rconfig_file
         unless File.exist?(rconfig_file)
-          puts "RConfig file: #{abs_file_name(rconfig_file)} doesn't exist ?"
+          warning "RConfig file: #{abs_file_name(rconfig_file)} doesn't exist ?"
         else
           @top_rconfig_path = File.expand_path(File.dirname(rconfig_file))
           exec_rconfig_file rconfig_file
@@ -59,10 +60,13 @@ module RBuild
       @deferrers.each {|node, value| set_node_value(node, value) }
     end
     
+    # turn file name with absolute path file name
     def abs_file_name(name)
       File.expand_path(File.dirname(name)) + '/' + File.basename(name)
     end
+    private :abs_file_name
     
+    # return the 'top node'
     def top_node
       @conf[:RBUILD_TOP_GLOBAL]
     end
@@ -106,19 +110,18 @@ module RBuild
     end  
   
     # ----------- RBuild DSL APIs ---------
-  
     def menu(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :menu, :key => key, :value => true, :title => desc}
+      node = {:type => :menu, :key => key, :title => desc}
       process_node(@conf[key], node, block)
     end
   
     def group(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :group, :key => key, :value => true, :title => desc}
+      node = {:type => :group, :key => key, :title => desc}
       process_node(@conf[key], node, block)
     end
-  
+    
     def choice(*args, &block)
       key, desc = args_to_key_desc(args)
       node = {:type => :choice, :key => key, :value => nil, :title => desc}
@@ -127,7 +130,7 @@ module RBuild
   
     def config(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :config, :key => key, :value => false, :title => desc}
+      node = {:type => :config, :key => key, :value => false, :title => desc, :data => :bool}
       process_node(@conf[key], node, block)
     end
   
@@ -141,8 +144,8 @@ module RBuild
     
     def unselect(*keys)
       keys.each {|key| @current[:unselects] << key}
-    end    
-  
+    end
+    
     def help(desc)
       @current[:help] = desc
     end
@@ -158,7 +161,16 @@ module RBuild
     def no_export
       @current[:no_export] = true
     end
+    
+    def hidden
+      @current[:hidden] = true
+    end
   
+    # set :choice or :config node value range
+    # range can be:
+    #  - Range, in this case, Range type would be Fixnum
+    #  - Array, in this case, range type is defined by Array elements
+    #  - Array of Hash{:value => :desc}, in this case, range is multiple choices
     def range(*arg)
       return if arg.size == 0
       if arg.size == 1
@@ -168,18 +180,67 @@ module RBuild
           error "Invalid range setting for '#{@current[:title]}'"
         end
       else
-        @current[:range] = arg        
+        @current[:range] = arg # range is Array
       end
     end
     
+    # load other 'RConfig' file from dest
+    # dest can be:
+    #     path_to_next_rconfig/RConfig
+    # or:
+    #     */RConfig   ==> search any sub folders
+    # or:
+    #     **/RConfig  ==> reclusivly search any sub folders
     def source(dest)
       Dir.glob(dest).each do |fn|
         exec_rconfig_file(fn)
       end
     end
     
+    # arg could be:
+    #  - Symbols only:
+    #   property :no_export, :hidden, :string
+    #  - Hash:
+    #   property :title => "Hello", :help => "this is a test"
+    #  - Symbols + Hash (only last one can be Hash)
+    #   property :no_export, :hidden, :string, :title => "Hello", :help => "this is a test"
+    def property(*arg)
+      arg.each do |a|
+        if a.is_a?(Symbol)
+          invoke_dsl a
+        elsif a.is_a?(Hash)
+          a.each do |key, value|
+            invoke_dsl key, value
+          end
+        else
+          warning "unsupported property type ! (of \"#{a}\", on \"#{@current[:title]}\")"
+        end
+      end
+    end
+    
     # ----------------------------------------------------------------------------------------------
     private
+    
+    def invoke_dsl(name, param = nil)
+      name = name.to_s
+      if param
+        if self.methods.include?(name)
+          if param.is_a?(Array)
+            self.send(name, *param)
+          else
+            self.send(name, param)
+          end
+        else
+          warning "no such DSL for property \"#{name}\" on \"#{@current[:title]}\""
+        end
+      else
+        if self.methods.include?(name)
+          self.send(name)
+        else
+          warning "no such DSL for property \"#{name}\" on \"#{@current[:title]}\""
+        end
+      end
+    end
     
     def exec_rconfig_file(fn)
       File.open(fn) do |f|
@@ -217,7 +278,7 @@ module RBuild
       elsif args.size == 2
         key, desc = args[0], args[1]
       else
-        warning "Invalid parameters on: #{@current[:title]}"
+        warning "Invalid parameters on \"#{@current[:title]}\""
       end
       return key, desc
     end    
@@ -241,7 +302,7 @@ module RBuild
     
     def do_select(node, key)
       if @conf[key].nil?
-        warning "Can't not select #{key} from '#{node[:title]}', not exist?"
+        warning "Can't not select \"#{key}\" from \"#{node[:title]}\", no such node ?"
       else
         # search up to the top, to prevent select/unselect ancestors
         set_node_yes(@conf[key]) unless search_ancestor(node, key)
@@ -250,7 +311,7 @@ module RBuild
     
     def do_unselect(node, key)
       if @conf[key].nil?
-        warning "Can't not unselect #{key} from '#{node[:title]}', not exist?"
+        warning "Can't not unselect \"#{key}\" from \"#{node[:title]}\", no such node ?"
       else
         # search up to the top, to prevent select/unselect ancestors
         set_node_no(@conf[key]) unless search_ancestor(node, key)
@@ -264,23 +325,21 @@ module RBuild
           f.puts desc
         end
       else
-        FileUtils.rm(log_file) if File.exist?(log_file)
+        FileUtils.rm_f(log_file) if File.exist?(log_file)
       end
     end
     
+    # log warning message
     def warning(desc)
-      puts desc
-      log_to_file desc
-      # STDIN.getc
+      log_to_file "Warning: " + desc
     end
     
+    # log error message
     def error(desc)
-      puts desc
-      log_to_file desc
-      puts " -- press ENTER key continue --"
-      STDIN.getc
+      log_to_file "Error: " + desc
     end
   
+    # process current DSL calling
     def process_node(old, node, block)
       if old
         @stack.push @current
@@ -327,6 +386,7 @@ module RBuild
       end
     end
   
+=begin    
     def show_all_nodes
       puts "Nodes total: #{@nodes.size}"
       @nodes.each do |n|
@@ -356,7 +416,8 @@ module RBuild
         puts "  #{n[:key]} => #{n[:value]}"
       end
     end
-  
+=end
+    
     def windows?
       RUBY_PLATFORM =~ /win/
     end
@@ -396,6 +457,8 @@ module RBuild
           if parent[:type] == :choice
             set_node_value(parent, node[:key])
           end
+        else
+          error "Bug! why call 'set_node_yes' on a non-config node (#{node[:title]}) ?"
         end
       end
     end
