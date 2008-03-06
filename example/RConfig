@@ -1,0 +1,25 @@
+# 
+# configura file for my project
+# 
+
+
+title "Welcom to my project configuration system !"
+
+menu "System Environment Configuration" do
+  config :RUN_IN_SKYEYE => "Runing in Skyeye simulator"
+end
+
+# source "Common/src/RConfig"
+# source "bsp/RConfig"
+
+group "RBuild System Options" do
+  choice :RBUILD_SYS_CONFIG_FILE => "RBuild Configuration File" do
+    no_export    # do not export this choice, it's for rbuild system.
+    default '.config'
+  end
+  
+  choice :RBUILD_PLUGIN_EXP_C_HEADER_FILE => "RBuild Export File" do
+    no_export     # do not export this choice, it's for rbuild system.
+    default 'uconfig.h'
+  end
+end

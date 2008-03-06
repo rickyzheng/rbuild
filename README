@@ -1,0 +1,43 @@
+RBuild - a KBuild like software configure/build system by Ruby DSL.
+-------------------------------------------------------------------
+
+-- Introduction --
+
+Rbuild is a KBuild like configure/build system, like KBuild, RBuild provide a menu driven configure interface for target software. RBuild take 'RConfig' files as input, generate target software configuration files by RBuild plugins, for example, the 'export_c' plugin generate C/C++ header config.h and Makefiles.
+
+A RConfig's syntax looks more like KConfig, plus lots of ruby flavors. Since RConfig file actually is a ruby script, it could be very flexiable and powerful.
+
+-- RConfig --
+
+All RConfig instructions falls into three catalogs:
+ - organizing: 'menu', 'group'
+ - configuration: 'choice', 'config'
+ - property: 'title', 'default', 'help', ...
+
+
+
+-- TO BE CONTINUED --
+
+
+-- Install --
+
+1. Install Ruby interpreter (http://www.ruby-lang.org)
+2. Copy 'scripts' directory into your target software package
+3. Write your 'RConfig' files
+4. at your target software package's root dir, run:
+	ruby scripts/rbuild.rb
+
+-- Project Home --
+
+RBuild is hosted by SourceForge (http://www.sourceforge.net/projects/rbuild/)
+RBuild's home page http://rbuild.sf.net/
+
+
+-- LICENCE --
+
+RBuild is released under GNU GPLv2.
+
+Copy Right (c) 2008, Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+
+
+
