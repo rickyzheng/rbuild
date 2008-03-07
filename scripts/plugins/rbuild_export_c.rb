@@ -31,7 +31,9 @@ module RBuild
               s += " (#{value.to_s})"
             end
             s += "\n"
-            datas << s
+            unless node[:id] == :choice && value.nil?
+              datas << s
+            end
           end
         end
       end

@@ -5,6 +5,7 @@
 
 title "Welcom to my project configuration system !"
 
+
 group "Config Example" do
   config :SIMPLE_CFG_A => "simple config"
   config :SIMPLE_CFG_WITH_DEFAULT_YES => "simple config with default yes" do
@@ -21,14 +22,21 @@ end
 group "Choice Example" do
   choice :CHO_WITH_SUB_CFGS => "choice from multiple configs, default B" do
     default :CHO_CFG_B
-    config :CHO_CFG_A => "config 1"
-    config :CHO_CFG_B => "config 2"
-    config :CHO_CFG_C => "config 3"
+    config :CHO_CFG_A => "config 1" do
+        range 0, 1
+    end
+    config :CHO_CFG_B => "config 2" do
+        range 0, 1
+    end
+    config :CHO_CFG_C => "config 3" do
+        range 0, 1
+    end
   end
 end
 
 # source "Common/src/RConfig"
 # source "bsp/RConfig"
+
 
 menu "RBuild Configuration" do
   group "RBuild System Options" do

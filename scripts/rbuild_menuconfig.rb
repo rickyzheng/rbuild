@@ -1,4 +1,5 @@
 
+
 module RBuild
 
   module Menuconfig
@@ -97,7 +98,15 @@ module RBuild
       puts "--------------------------------------------"
       puts "  (S)ave   (L)oad   e(X)port   (Q)uit\n"
     end
-      
+    
+    def get_dbg_key
+      @dbg_idx ||= 0
+      @dbg_ks ||= [KEY_RIGHT, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
+      k = @dbg_ks[@dbg_idx]
+      @dbg_idx += 1
+      k
+    end
+    
     # read key press without echo ...
     def getch
       if windows?
@@ -105,19 +114,22 @@ module RBuild
         fun = Win32API.new("crtdll", "_getch", [], 'L')
         fun.call
       else
-        if ARGV[0] && ARGV[0] == "run_in_nb"
-          return STDIN.getc
+        require 'io/wait'
+        if false && DBG_GETCH
+          get_dbg_key()
+        else
+          state = `stty -g`
+          begin
+            system "stty raw -echo cbreak isig"
+            until STDIN.ready?
+              sleep 0.1
+            end
+            s = STDIN.read_nonblock(3)
+          ensure
+            system "stty #{state}"
+          end
         end
-        system("stty raw")
-        system("stty -echo")
-        s = STDIN.read(1)
-        system("stty -raw")
-        system("stty echo")
-	begin
-          #STDIN.read_nonblock(2)
-        rescue
-        end
-        s[0]
+        s[s.size - 1]
       end
     end
     
@@ -212,17 +224,17 @@ module RBuild
       while true do
         c = getch()
         case c
-        when ?\r, KEY_SPACE, KEY_RIGHT # ENTER, SPACE, RIGHT -->
+        when ?\r, KEY_SPACE, KEY_RIGHT, '6'[0] # ENTER, SPACE, RIGHT -->
           if selected != cursor
             values[selected][:selected] = false
             values[cursor][:selected] = true
             selected = cursor
           end
-        when KEY_UP # UP
+        when KEY_UP,'8'[0] # UP
           cursor -= 1 if cursor > 0
-        when KEY_DOWN # DOWN
+        when KEY_DOWN,'2'[0] # DOWN
           cursor += 1 if cursor < values.size - 1
-        when KEY_LEFT, KEY_ESC
+        when KEY_LEFT, KEY_ESC, '4'[0]
           set_node_value(node, values[selected][:value])
           break
         end

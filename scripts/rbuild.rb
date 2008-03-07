@@ -610,7 +610,10 @@ module RBuild
   
 end
 
+puts "__FILE__ : #{__FILE__}"
+puts "$0: #{$0}"
 if __FILE__ == $0
+  Dir.chdir File.expand_path(File.dirname(__FILE__))
   rconf = RBuild::RConfig.new('../example/RConfig')
   rconf.menuconfig()
 end
