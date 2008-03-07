@@ -6,7 +6,7 @@ module RBuild
 
   module Export_C_Header
   
-    private
+    public
     
     # will be actived by :RBUILD_PLUGIN_EXP_C_HEADER 
     def exp_c_header_file(file)
@@ -22,19 +22,16 @@ module RBuild
       headers << "\n"
       datas = []
       @nodes.each do |node|
-        case node[:type]
-        when :config
-          if node[:value]
+        unless node[:no_export] || node_no?(node)
+          case node[:id]
+          when :config, :choice
             s = "#define CONFIG_" + node[:key].to_s
-            if node[:value].is_a?(String) || node[:value].is_a?(Fixnum)
-              s = " #{node[:value].to_s}"
+            value = get_node_value(node)
+            if value && (value.is_a?(String) || value.is_a?(Fixnum))
+              s += " (#{value.to_s})"
             end
             s += "\n"
             datas << s
-          end
-        when :choice
-          if (not node[:value].is_a?(Symbol)) && node[:value]
-            datas << "#define CONFIG_" + node[:key].to_s + " " + node[:value].to_s + "\n"
           end
         end
       end
@@ -43,7 +40,6 @@ module RBuild
       footers <<  "#endif\n"
       footers <<  "\n"
       
-      changed = false
       lines = []
       if File.exist?(file)
         File.open(file, "r") do |f|

@@ -5,22 +5,42 @@
 
 title "Welcom to my project configuration system !"
 
-menu "System Environment Configuration" do
-  config :RUN_IN_SKYEYE => "Runing in Skyeye simulator"
+group "Config Example" do
+  config :SIMPLE_CFG_A => "simple config"
+  config :SIMPLE_CFG_WITH_DEFAULT_YES => "simple config with default yes" do
+    default true
+  end
+  config :SIMPLE_CFG_WITH_DEFAULT_NO => "simple config with default no" do
+    default false
+  end
+  config :CFG_WITH_USER_DEFINED_VALUE => "config with user defined value" do
+    range 0, 1
+  end
+end
+
+group "Choice Example" do
+  choice :CHO_WITH_SUB_CFGS => "choice from multiple configs, default B" do
+    default :CHO_CFG_B
+    config :CHO_CFG_A => "config 1"
+    config :CHO_CFG_B => "config 2"
+    config :CHO_CFG_C => "config 3"
+  end
 end
 
 # source "Common/src/RConfig"
 # source "bsp/RConfig"
 
-group "RBuild System Options" do
-  choice :RBUILD_SYS_CONFIG_FILE => "RBuild Configuration File" do
-    property :no_export    # do not export this choice, it's for rbuild system.
-    default '.config'
-  end
-  
-  choice :RBUILD_PLUGIN_EXP_C_HEADER_FILE => "RBuild Export File" do
-    property :no_export     # do not export this choice, it's for rbuild system.
-    property :hidden_a
-    default 'uconfig.h'
+menu "RBuild Configuration" do
+  group "RBuild System Options" do
+    choice :RBUILD_SYS_CONFIG_FILE => "RBuild Configuration File" do
+      property :no_export    # do not export this choice, it's for rbuild system.
+      default '.config'
+    end
+    
+    choice :RBUILD_PLUGIN_EXP_C_HEADER_FILE => "RBuild Export File" do
+      property :no_export     # do not export this choice, it's for rbuild system.
+      default 'uconfig.h'
+    end
   end
 end
+

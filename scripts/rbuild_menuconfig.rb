@@ -23,7 +23,7 @@ module RBuild
     def list_nodes_to_navable(list)
       navable = []
       list.each do |x|
-        unless x[:node][:type] == :group
+        unless x[:node][:id] == :group
           navable << x[:node]
         end
       end
@@ -67,20 +67,20 @@ module RBuild
         node = list[:node]
         level = list[:level]
         s = ""
-        case node[:type]
+        case node[:id]
         when :group
           s = "  " + ('-' * level) + " #{node[:title]} " + ('-' * level)
         when :menu
           s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "-+-" + " #{node[:title]}" + " -+-"
         when :config
-          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "[#{node[:value] ? "*" : " "}]" + " #{node[:title]}"
+          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "[#{node[:hit] ? "*" : " "}]" + " #{node[:title]}"
         when :choice
-          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "\{#{node[:value] ? "*" : " "}\}" + " #{node[:title]}"
-          if node[:value]
-            if node[:value].is_a?(Symbol)
+          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "\{#{node[:hit] ? "*" : " "}\}" + " #{node[:title]}"
+          if node[:hit]
+            if node[:children].size > 0 && node[:value].is_a?(Symbol)
               s += " <#{@conf[node[:value]][:title]}>"
             else
-              s += " <#{node[:value].to_s}>"
+              s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
             end              
           end
         end
@@ -268,12 +268,12 @@ module RBuild
         footer_clear()
         case c
         when ?\r, KEY_SPACE, KEY_RIGHT # ENTER, SPACE, RIGHT -->
-          if cursor[:type] == :config
-            if cursor[:range]
-              node_input(cursor)
-            else
+          if cursor[:id] == :config
+            #if cursor[:range]
+            #  node_input(cursor)
+            #else
               toggle_node cursor
-            end
+            #end
           else
             list_nodes = get_list_nodes(cursor)
             if list_nodes && list_nodes.size > 0
@@ -284,7 +284,7 @@ module RBuild
                 cursor = navables[0]
               end
             else
-              if cursor[:type] == :choice
+              if cursor[:id] == :choice
                 node_input(cursor)
               end
             end
@@ -296,7 +296,7 @@ module RBuild
         when KEY_LEFT, KEY_ESC
           begin
             current = @conf[current[:parent]]
-          end while current[:type] == :group
+          end while current[:id] == :group
           cursor = nav_stack.pop if nav_stack.size > 0
         when ?q, ?Q
           break

@@ -29,11 +29,10 @@ module RBuild
  
     def initialize(rconfig_file = nil)
       @conf = {}
-      @current = {:type => :menu, 
+      @current = {:id => :menu, 
             :key => :RBUILD_TOP_GLOBAL,
             :title => "Welcom to RBuild Configuration System !",
             :children => [],
-            :value => true,
             :depends =>[],
           }
       @current[:parent] = @current[:key]			
@@ -76,7 +75,7 @@ module RBuild
     def load_config(config_file = nil)
       cfg_file_node = @conf[:RBUILD_SYS_CONFIG_FILE]
       if cfg_file_node && cfg_file_node[:no_export]
-        config_file ||= cfg_file_node[:value].to_s
+        config_file ||= get_node_value(cfg_file_node).to_s
       end
       config_file ||= RBuild::DEFAULT_CONFIG_FILE
       return unless File.exist?(config_file)
@@ -92,12 +91,47 @@ module RBuild
       footer_msg "config loaded from: #{config_file}"
     end
   
+    def get_node_value(node)
+      case node[:id]
+      when :config
+        if node[:range] && node[:range].is_a?(Array) && node[:range].size == 2
+          if node[:hit]
+            node[:range][1]
+          else
+            node[:range][0]
+          end
+        else
+          node[:hit] ? node[:value] : nil
+        end
+      when :choice
+        if node[:hit]
+          if node[:children].size > 0
+            value = nil
+            node[:children].each do |child|
+              if @conf[child][:hit]
+                value = get_node_value(@conf[child])
+                break
+              end
+            end
+            value
+          else
+            node[:value]
+          end
+        else
+          nil
+        end
+      else
+        node[:title]
+      end
+    end
+    private :get_node_value
+    
     # save config to file.
     # if file is nil, search the @conf[:RBUILD_SYS_CONFIG_FILE], use [:value] as file name.
     def save_config(config_file = nil)
       cfg_file_node = @conf[:RBUILD_SYS_CONFIG_FILE]
       if cfg_file_node && cfg_file_node[:no_export]
-        config_file ||= cfg_file_node[:value].to_s
+        config_file ||= get_node_value(cfg_file_node).to_s
       end
       config_file ||= RBuild::DEFAULT_CONFIG_FILE
       File.open(config_file, "w") do |f|
@@ -112,25 +146,25 @@ module RBuild
     # ----------- RBuild DSL APIs ---------
     def menu(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :menu, :key => key, :title => desc}
+      node = {:id => :menu, :key => key, :title => desc}
       process_node(@conf[key], node, block)
     end
   
     def group(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :group, :key => key, :title => desc}
+      node = {:id => :group, :key => key, :title => desc}
       process_node(@conf[key], node, block)
     end
     
     def choice(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :choice, :key => key, :value => nil, :title => desc}
+      node = {:id => :choice, :key => key, :value => nil, :title => desc, :hit => false}
       process_node(@conf[key], node, block)
     end
   
     def config(*args, &block)
       key, desc = args_to_key_desc(args)
-      node = {:type => :config, :key => key, :value => false, :title => desc, :data => :bool}
+      node = {:id => :config, :key => key, :title => desc, :hit => false, :value => nil }
       process_node(@conf[key], node, block)
     end
   
@@ -165,12 +199,21 @@ module RBuild
     def hidden
       @current[:hidden] = true
     end
+    
+    def string
+      @current[:type] = :string
+    end
+    
+    def bool
+      @current[:type] = :bool
+    end
   
     # set :choice or :config node value range
     # range can be:
     #  - Range, in this case, Range type would be Fixnum
     #  - Array, in this case, range type is defined by Array elements
-    #  - Array of Hash{:value => :desc}, in this case, range is multiple choices
+    #  - Hash{value1 => desc1, value2 => desc2, ...}, in this case, range is multiple choice
+    #  - Array of Hash{value => desc}, use this to appoint the order. in this case, range is multiple choices
     def range(*arg)
       return if arg.size == 0
       if arg.size == 1
@@ -231,13 +274,13 @@ module RBuild
             self.send(name, param)
           end
         else
-          warning "no such DSL for property \"#{name}\" on \"#{@current[:title]}\""
+          warning "no such property \"#{name}\" for \"#{@current[:title]}\""
         end
       else
         if self.methods.include?(name)
           self.send(name)
         else
-          warning "no such DSL for property \"#{name}\" on \"#{@current[:title]}\""
+          warning "no such property \"#{name}\" for \"#{@current[:title]}\""
         end
       end
     end
@@ -289,6 +332,8 @@ module RBuild
       node[:unselects].each {|sel| do_unselect(node, sel)}
     end
     
+    # search in node's ancestors.
+    # if there is a ancestor has 'key', return ancestor, otherwire reutrn nil
     def search_ancestor(node, key)
       worker = node
       while worker && worker != top_node()
@@ -300,6 +345,8 @@ module RBuild
       return nil
     end
     
+    # node: just for reference.
+    # key: the node to be selected !
     def do_select(node, key)
       if @conf[key].nil?
         warning "Can't not select \"#{key}\" from \"#{node[:title]}\", no such node ?"
@@ -309,6 +356,8 @@ module RBuild
       end
     end
     
+    # node: just for reference.
+    # key: the node to be unselected !
     def do_unselect(node, key)
       if @conf[key].nil?
         warning "Can't not unselect \"#{key}\" from \"#{node[:title]}\", no such node ?"
@@ -341,7 +390,7 @@ module RBuild
   
     # process current DSL calling
     def process_node(old, node, block)
-      if old
+      if old # node exist ?
         @stack.push @current
         @current = old
         block.call if block
@@ -366,7 +415,7 @@ module RBuild
     # search plugin config keys from @conf, if found, call plugin.
     # the plugin name is part of config key: RBUILD_PLUGIN_XXX
     # if file is provided, use file as file name, otherwise use
-    # the value of @conf[:RBUILD_PLUGIN_XXX][:value]
+    # the value of @conf[:RBUILD_PLUGIN_XXX]
     def export(file = nil)
       @conf.each do |key, node|
         if node[:no_export] && key.to_s =~ /RBUILD_PLUGIN_(.*)/
@@ -374,74 +423,45 @@ module RBuild
           @dirstack << @curpath
           @curpath = @top_rconfig_path
           Dir.chdir @curpath
-          
-          begin
-            s = "#{plugin}('#{file || node[:value].to_s}')"
-            eval s
-          rescue
-            error "Fail to call plugin: #{plugin}, file name: #{file || node[:value].to_s}, cmd: #{s}"
+          if self.methods.include?(plugin)
+            self.send(plugin, file || get_node_value(node).to_s)
+          else
+            warning "plugin \"#{plugin}\" not installed ?"
           end
           Dir.chdir @dirstack.pop
         end
       end
     end
-  
-=begin    
-    def show_all_nodes
-      puts "Nodes total: #{@nodes.size}"
-      @nodes.each do |n|
-        puts "  Node: #{n[:key]}"
-        puts "    type   : #{n[:type]}"
-        puts "    value  : #{n[:value]}" 
-        s =  "    depends: "
-        if n[:depends].size > 0
-          n[:depends].each { |d| s += "#{d}," }
-        else
-          s += "no"
-        end
-        puts s
-        s =  "   children: "
-        if n[:children].size > 0
-          n[:children].each { |child| s += "#{@conf[child][:key]}," }
-        else
-          s += "no"
-        end
-        puts s + "\n\n"
-      end
-    end
-  
-    def show_config
-      puts "Current configurations:"
-      @conf.each do |key, n|
-        puts "  #{n[:key]} => #{n[:value]}"
-      end
-    end
-=end
     
     def windows?
       RUBY_PLATFORM =~ /win/
     end
 
     # set node's value, the value must not be 'false' or 'nil'
+    # if you want to unselect a choice, use 'set_node_no' instead
     def set_node_value(node, value)
       if value
-        if node[:type] == :choice && node[:value] != value
+        node[:hit] = true
+        if node[:id] == :choice && node[:value] != value
           process_sel_unsel(node)
           if node[:children].size > 0
+            # for :choice which have children, the value is the child's key.
             node[:children].each do |child|
               if child == value
-                node[:value] = value
+                node[:value] = child
                 set_node_yes(@conf[child])
               else
                 set_node_no(@conf[child])  
               end
             end
           else
+            # for :choice which don't have children, the value is the value :)
             node[:value] = value
           end
         end
+        
         parent = @conf[node[:parent]]
-        if parent[:type] == :choice && parent[:value] != node[:key]
+        if parent[:id] == :choice && parent[:value] != node[:key]
           set_node_value(parent, node[:key])
         end
       end      
@@ -450,11 +470,11 @@ module RBuild
     # set the node's value to {yes}
     def set_node_yes(node)
       if node_no?(node)
-        if node[:type] == :config
-          node[:value] = value_of_yes(node)
+        if node[:id] == :config
+          node[:hit] = true
           process_sel_unsel(node)
           parent = @conf[node[:parent]]
-          if parent[:type] == :choice
+          if parent[:id] == :choice
             set_node_value(parent, node[:key])
           end
         else
@@ -466,50 +486,32 @@ module RBuild
     # set the node's value to {no}
     def set_node_no(node)
       if node_yes?(node)
-        node[:value] = value_of_no(node)
+        node[:hit] = nil
         process_sel_unsel(node)
-        if node[:type] == :config
+        if node[:id] == :config
           parent = @conf[node[:parent]]
-          if parent[:type] == :choice && parent[:value] == node[:key]
+          if parent[:id] == :choice && parent[:value] == node[:key]
             set_node_no(parent)
           end
-        elsif node[:type] == :choice
+        elsif node[:id] == :choice
           node[:value] = nil
           node[:children].each do |child|
              set_node_no(@conf[child])
           end
+        else
+          warning "call 'set_node_no' to neither :choice nor :config node (#{node[:title]})?"
         end
       end
     end
     
     # node's value is {yes} ?
     def node_yes?(node)
-      if node[:type] == :choice
-        return node[:value] != value_of_no(node)
-      else
-        (node[:value] || (node[:value] != value_of_no(node))) ? true : false
-      end
+      node[:hit] ? true : false
     end
     
     # node's value is {no} ?
     def node_no?(node)
-      if node[:type] == :choice
-        node[:value].nil?
-      else
-        (node[:value].nil? || (node[:value] == value_of_no(node))) ? true : false
-      end
-    end
-    
-    def value_of_yes(node)
-      true
-    end
-    
-    def value_of_no(node)
-      if node[:type] == :choice
-        nil
-      else
-        false
-      end
+      node[:hit] ? false : true
     end
     
     # toggle node's value
@@ -529,34 +531,36 @@ module RBuild
       children = parent[:children]
       if children
         children.each do |child|
-          depok = true
           node = @conf[child]
-          node[:depends].each do |dep|
-            dep_node = @conf[dep]
-            unless dep_node
-              # can't find depend node ??, stop searching dependancy
-              depok = false
-              break;
-            else
-              # for :config, dep_node must not {no}
-              # for :choice, dep_node must no {no} except dep_node is the direct parent.
-              if (dep_node[:type] == :config && node_no?(dep_node)) ||
-                  (dep_node[:type] == :choice && node_no?(dep_node) && (node[:parent] != dep_node[:key]))
+          unless node.nil? || node[:hidden]
+            depok = true
+            node[:depends].each do |dep|
+              dep_node = @conf[dep]
+              unless dep_node
+                # can't find depend node ??, stop searching dependancy
                 depok = false
-                break # stop searching dependancy
+                break;
+              else
+                # for :config, dep_node must not {no}
+                # for :choice, dep_node must no {no} except dep_node is the direct parent.
+                if (dep_node[:id] == :config && node_no?(dep_node)) ||
+                    (dep_node[:id] == :choice && node_no?(dep_node) && (node[:parent] != dep_node[:key]))
+                  depok = false
+                  break # stop searching dependancy
+                end
               end
             end
-          end
-  
-          if depok
-            if node[:type] == :group
-              list_nodes << {:node => node, :level => level}
-              get_list_nodes(node, list_nodes, level + 1)
-            else
-              list_nodes << {:node => node, :level => level}
+
+            if depok
+              if node[:id] == :group
+                list_nodes << {:node => node, :level => level}
+                get_list_nodes(node, list_nodes, level + 1)
+              else
+                list_nodes << {:node => node, :level => level}
+              end
             end
-          end
-        end
+          end # end of child[:hidden]
+        end # end of children.each
       end
       list_nodes
     end
@@ -564,7 +568,7 @@ module RBuild
     # check whether there are any conflit/invalid default setting.  
     def check_defaults
       @nodes.each do |node|
-        if node[:type] == :choice
+        if node[:id] == :choice
           if node[:value] && node[:children].size > 0
             children = node[:children]
             found = nil
