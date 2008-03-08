@@ -81,7 +81,12 @@ module RBuild
             if node[:children].size > 0
               s += " <#{@conf[node[:value]][:title]}>"
             else
-              s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
+              v = node[:value]
+              if v.is_a?(Fixnum) && v != 0
+                s += (" < #{v} (0x" + ('%X' % v) + ") >")
+              else
+                s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
+              end
             end              
           end
         end
@@ -140,58 +145,53 @@ module RBuild
       puts ""
     
       if range
-        begin
-          succ = false
-          value = get_node_value(node)
-          if value
-            print "Input < #{range.min}..#{range.max}, default:'#{value}' > : "
-          else
-            print "Input < #{range.min}..#{range.max} >: "
-          end
+        while true
+          print "Input < #{range.min}..#{range.max} >: "
           s = STDIN.gets.chomp
           if s == ""
-            succ = true
+            set_node_no(node)
+            break
           else
-            value = s.to_i
+            if range.min.is_a?(Fixnum)
+              if s =~ /^[0-9]+$/
+                value = s.to_i
+              elsif s =~ /^0[xX][0-9a-fA-F]+$/
+                value = s.hex
+              else
+                puts "Invalid input, press any key try again ..."
+                redo
+              end
+            else
+              value = s
+            end
             if range.include?(value)
               set_node_value(node, value)
-              succ = true
+              break
             else
-              puts "Invalid input, press any key try again ..."
+              puts "No in the range, press any key try again ..."
               getch()
             end
           end
-        rescue
-          puts "Invalid input, press any key try again ..."
-          getch()
-        end until succ
-      else
-        # if no range privided, just input string
-        begin
-          if node[:value]
-            print "Input < default: '#{node[:value]}' >: "
+        end
+        
+      else # no :range provided.
+
+        print "Input: "
+        
+        s = STDIN.gets.chomp.strip
+
+        if s == ""
+          set_node_no(node)
+        else
+          if s =~ /^[0-9]+$/
+            value = s.to_i
           else
-            print "Input: "
+            value = s
           end
-          s = STDIN.gets.chomp.strip
-          unless s == ""
-            value = get_node_value(node)
-            if value
-              if value.is_a?(String)
-                set_node_value(node, s)
-              elsif node[:value].is_a?(Fixnum)
-                set_node_value(node, s.to_i)
-              else
-                set_node_value(node, s)
-              end
-            else
-              set_node_value(node, s.to_i)
-            end
-          end
-        rescue
-          set_node_value(node, s) # if any error happens when calling '.to_i', use string
+          set_node_value(node, value)
         end
       end
+      
     end
     
     # node value input by choice one of the value from range (could be array or hash)
