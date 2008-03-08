@@ -1,4 +1,13 @@
 #
+# RBuild: a Linux KBuild like configure/build system by Ruby DSL.
+#
+# Copy right(C) 2008, Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+#
+# Licence: GNU GPLv2
+#
+# http://rbuild.sourceforge.net/
+#
+#
 # RBuild plugin for exporting configurations to C/C++ header.
 #
 

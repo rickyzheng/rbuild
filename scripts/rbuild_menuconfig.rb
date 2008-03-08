@@ -1,3 +1,12 @@
+#
+# RBuild: a Linux KBuild like configure/build system by Ruby DSL.
+#
+# Copy right(C) 2008, Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+#
+# Licence: GNU GPLv2
+#
+# http://rbuild.sourceforge.net/
+#
 
 
 module RBuild
@@ -226,7 +235,7 @@ module RBuild
       while true do
         c = getch()
         case c
-        when ?\r, KEY_SPACE, KEY_RIGHT, '6'[0] # ENTER, SPACE, RIGHT -->
+        when ?\r, KEY_SPACE, KEY_RIGHT # ENTER, SPACE, RIGHT -->
           if selected
             if selected != cursor
               values[selected][:selected] = false
@@ -241,11 +250,11 @@ module RBuild
             selected = cursor
             values[cursor][:selected] = true
           end
-        when KEY_UP,'8'[0] # UP
+        when KEY_UP # UP
           cursor -= 1 if cursor > 0
-        when KEY_DOWN,'2'[0] # DOWN
+        when KEY_DOWN # DOWN
           cursor += 1 if cursor < values.size - 1
-        when KEY_LEFT, KEY_ESC, '4'[0]
+        when KEY_LEFT, KEY_ESC
           set_node_value(node, values[selected][:value]) if selected
           break
         end

@@ -8,7 +8,7 @@
 # http://rbuild.sourceforge.net/
 #
 
-# reserved keys:
+# Reserved keys:
 #   :RBUILD_SYS_CONFIG_FILE, for load/save rbuild config file.
 #   :RBUILD_PLUGIN_XXXX, for rbuild plugins.
 
@@ -19,7 +19,7 @@ require File.dirname(__FILE__) + '/plugins/rbuild_export_c'
 
 module RBuild
 
-  DEFAULT_CONFIG_FILE = '.config'
+  DEFAULT_CONFIG_FILE = 'rb.config'
   DEFAULT_LOG_FILE = 'rbuild.log'
 
   class RConfig
