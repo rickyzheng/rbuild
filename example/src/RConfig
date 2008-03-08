@@ -1,0 +1,9 @@
+
+menu "Menu from src folder" do
+    group :NAMED_GROUP => "combiniation group" do
+        config :TEST_TEMP => "just a test"
+    end
+end
+
+# include all sub-folders RConfig files
+source "*/RConfig"

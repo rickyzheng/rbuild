@@ -78,7 +78,7 @@ module RBuild
         when :choice
           s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "\{#{node[:hit] ? "*" : " "}\}" + " #{node[:title]}"
           if node[:hit]
-            if node[:children].size > 0 && node[:value].is_a?(Symbol)
+            if node[:children].size > 0
               s += " <#{@conf[node[:value]][:title]}>"
             else
               s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
@@ -142,10 +142,11 @@ module RBuild
       if range
         begin
           succ = false
-          if node[:value]
-            print "Input <#{range.min} .. #{range.max}, default:#{node[:value]}>: "
+          value = get_node_value(node)
+          if value
+            print "Input < #{range.min}..#{range.max}, default:'#{value}' > : "
           else
-            print "Input <#{range.min} .. #{range.max}>: "
+            print "Input < #{range.min}..#{range.max} >: "
           end
           s = STDIN.gets.chomp
           if s == ""
@@ -153,41 +154,42 @@ module RBuild
           else
             value = s.to_i
             if range.include?(value)
-              node[:value] = value
+              set_node_value(node, value)
               succ = true
             else
-              puts "Invalid input, the range is: <#{range.min} .. #{range.max}>, press any key try again ..."
+              puts "Invalid input, press any key try again ..."
               getch()
             end
           end
         rescue
-          puts "Invalid input, the range is: <#{range.min} .. #{range.max}>, press any key try again ..."
+          puts "Invalid input, press any key try again ..."
           getch()
         end until succ
       else
         # if no range privided, just input string
         begin
           if node[:value]
-            print "Input <default: #{node[:value]}>:"
+            print "Input < default: '#{node[:value]}' >: "
           else
-            print "Input:"
+            print "Input: "
           end
-          s = STDIN.gets.chomp
+          s = STDIN.gets.chomp.strip
           unless s == ""
-            if node[:value]
-              if node[:value].is_a?(String)
-                node[:value] = s
+            value = get_node_value(node)
+            if value
+              if value.is_a?(String)
+                set_node_value(node, s)
               elsif node[:value].is_a?(Fixnum)
-                node[:value] = s.to_i
+                set_node_value(node, s.to_i)
               else
-                node[:value] = s
+                set_node_value(node, s)
               end
             else
-              node[:value] = s.to_i
+              set_node_value(node, s.to_i)
             end
           end
         rescue
-          node[:value] = s
+          set_node_value(node, s) # if any error happens when calling '.to_i', use string
         end
       end
     end
@@ -213,7 +215,7 @@ module RBuild
       selected = nil
       values.each_index do |idx|
         elm = values[idx]
-        if node[:value] == elm[:value]
+        if get_node_value(node) == elm[:value]
           elm[:selected] = true
           selected = idx
           cursor = idx
@@ -225,17 +227,26 @@ module RBuild
         c = getch()
         case c
         when ?\r, KEY_SPACE, KEY_RIGHT, '6'[0] # ENTER, SPACE, RIGHT -->
-          if selected != cursor
-            values[selected][:selected] = false
-            values[cursor][:selected] = true
+          if selected
+            if selected != cursor
+              values[selected][:selected] = false
+              values[cursor][:selected] = true
+              selected = cursor
+            else
+              selected = nil
+              values[cursor][:selected] = false
+              set_node_no(node)
+            end
+          else
             selected = cursor
+            values[cursor][:selected] = true
           end
         when KEY_UP,'8'[0] # UP
           cursor -= 1 if cursor > 0
         when KEY_DOWN,'2'[0] # DOWN
           cursor += 1 if cursor < values.size - 1
         when KEY_LEFT, KEY_ESC, '4'[0]
-          set_node_value(node, values[selected][:value])
+          set_node_value(node, values[selected][:value]) if selected
           break
         end
         show_choice_input(node, values, cursor)
