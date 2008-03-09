@@ -110,7 +110,7 @@ module RBuild
     def show_footer_bar
       puts "[[ " + footer_msg() + " ]]" if footer_msg()
       puts "--------------------------------------------"
-      puts "  (S)ave   (L)oad   e(X)port   (Q)uit\n"
+      puts "  (S)ave   (L)oad   (Q)uit\n"
     end
     
     def get_dbg_key
@@ -331,9 +331,8 @@ module RBuild
           end while current[:id] == :group
           cursor = nav_stack.pop if nav_stack.size > 0
         when ?q, ?Q
-          break
-        when ?x, ?X
           export()
+          break
         when ?s, ?S
           save_config()
         when ?l, ?L

@@ -1,0 +1,196 @@
+RBuild - a KBuild like software configure/build system by Ruby DSL.
+-------------------------------------------------------------------
+
+-- 1 RBuild简介 --
+
+RBuild是一个类似KBuild的软件配置和编译系统。Linux内核配置和编译就采用了KBuild，使用着可以方便地用菜单来配置/定制Linux内核。
+由于KBuild比较复杂，需要依赖许多Linux下的库，而且定制和扩展KBuild的功能都很麻烦，因此要在一个软件项目中采用KBuild，往往需要作许多工作。
+
+RBuild的目的也就是为你的软件提供一个类似KBuild的基于菜单的配置系统。在一个软件项目中使用RBuild很简单，只要系统中安装有Ruby（和Rake）就可以了。
+
+由于RBuild采用Ruby DSL来实现，因此非常灵活，易于扩展。RBuild不仅可以从配置中产生C/C++的头文件，Makefile文件，而且可以很容易地扩展RBuild（增加plugins）来
+产生你所需要的格式的文件。因此，RBuild不仅可以用于C/C++项目的配置管理，也可以用于其他语言的开发项目。
+
+-- 2 RBuild 的组成 --
+
+RBuild由三部分组成：RBuild核心，RBuild插件，和RBuild配置文件（RConfig)。
+
+RBuild核心完成DSL解析，菜单驱动等功能，RBuild插件负责输出各种文件。RBuild核心和RBuild插件由RBuild项目提供，参加scripts目录下的文件。
+而RConfig文件则需要由用户编写。RConfig文件就是用户用RBuild DSL来描述自己软件需要配置的信息，RConfig文件可以是一个或者多个散布在用户工程
+目录中，熟悉Linux内核开发的用户对于这种方式一定非常熟悉。
+
+最后，RConfig文件作为RBuild的输入，用于产生配置菜单，供使用者对软件进行配置。
+
+-- 3 RConfig 语法 --
+
+3.1 RBuild DSL语句
+RBuild DSL有四种类型：
+＊ 第一种用于组织配置项的显示，如:'menu', 'group'。
+＊ 第二种是用于产生配置项，如:'choice', 'config'。
+＊ 第三种是属性描述，如：'title', 'default', 'help', 'range', 'depends', ...
+＊ 最后一种是用于包含其他RConfig文件，如：'source' 
+
+一个简单的RConfig文件例子：
+
+title "Welcom to my software config system !"
+menu "Package config" do
+	config :PACKAGE_A => "enable package A" 
+	group "Package A options" do
+		depends :PACKAGE_A
+		config :PACKAGE_A_FUN_A => "function A"
+		config :PACKAGE_A_FUN_B => "function B"
+	end
+	config :PACKAGE_B => "enable package B"
+	choice :PACKAGE_B_PARAM => "select package B param" do
+		depends :PACKAGE_B
+		default 200
+		range 100, 200, 300
+	end
+end
+menu "RBuild Configuration" do
+  group "RBuild System Options" do
+    choice :RBUILD_SYS_CONFIG_FILE => "RBuild Configuration File" do
+      property :no_export    # do not export this, it's for rbuild system internal.
+      default 'rb.config'
+    end
+    
+    choice :RBUILD_PLUGIN_EXP_C_HEADER_FILE => "RBuild Export File" do
+      property :no_export     # do not export this, it's for rbuild system internal.
+      default 'config.h'
+    end
+  end
+end
+
+3.2 RConfig 语法
+RConfig文件的语法非常简单，如果熟悉Ruby的语法，那么理解就更简单了，以下就是对RConfig语法的一个简单描述：
+
+3.2.1 do ... end: 用于限定子项目的作用范围，例如：
+menu "XXX" do
+ config :PACKAGE_A
+end
+
+在这里，config :PACKAGE_A 就是menu "XXX" 的子项目。当然，子项目可以是任意合法的语句，如配置项(config)，选择项（choice），
+或者属性，也可以嵌套另一个menu，如：
+menu "XXX" do
+	menu "YYY" do
+     ...
+	end
+end 
+
+通过 do ... end， RConfig就可以构筑了一个有层次的菜单系统。
+
+3.2.2  “:XXX” 符号
+在RConfig中，以":"开头的称为“符号”， 如 ：MODULE_A, 就是一个“符号”。“符号”用于对某个 menu, group, config 或 choice 进行标识，例如：
+
+config :MODULE_A => "enable module A"
+
+在这里，用 :MODULE_A 对这个‘config’进行标识。
+符号后面可以用 => "description string" 来对这个符号进行描述，这里的描述信息也会作为提示信息显示在配置菜单中。如果不带描述信息，则符号名称会作为
+描述信息出现在菜单项中。
+
+符号，作为对'config'或者'choice'的标识，在输出C/C++头文件的时候会被转换成宏定义。例如：
+config :MODULE_A 这个选项如果被选中，那么最终产生的C/C++头文件中就会出现这么一行：
+#define CONFIG_MODULE_A
+也就是说，符号前面被加上“CONFIG_”出现在头文件中。
+
+有时候符号可以被省略，而直接用描述信息作为标识，例如前面看到的menu实际上就是这种情况：
+menu "XXX" do
+  ...
+end
+有些情况下，你需要对一个menu进行显式的标识，如：
+menu :MENU_XXX => "XXX" do
+  ...
+end
+
+更多的关于如何编写RConfig文件，请参阅example目录下的例子。
+
+3.3.3 RBuild DSL参考 
+这里列出目前所能够支持的RBuild DSL:
+
+3.3.3.1 属性
+从上面的例子我们可以看到，属性声明要放在do ... end 里面，如果：
+	choice :PACKAGE_B_PARAM => "select package B param" do
+		depends :PACKAGE_B
+		default 200
+		range 100, 200, 300
+	end 
+这里的depends, default, range都是属性声明语句，他们都是作用于choice :PACKAGE_B_PARAM。
+
+目前RBuild实现的属性声明有：
+- title: 设置描述信息
+- help: 设置帮助信息
+- default: 设置默认值，注意，值的类型要和被设置对象吻合
+- range: 设置值的范围，通常作用于choice。range的声明方式很灵活，有以下几种形式：
+      range 100, 200, 300  # 只有三个选择，100， 200 或 300
+      range 0..100 # 从0到100的任意值（包括0和100） 
+      range "A", "B", "C" # 字符串形式的选择项
+      range 0=>"Zero", 1=>"One", 2=>"Two"  # 带描述信息的选择项
+
+- depends: 声明此项目依赖于其他项目，后面的参数是被依赖项目的标识符（符号），如：
+      depends :MODULE_A, :MODULE_B
+
+- select: 当本项目被选中时，主动选择另外的项目，如：
+      select :FUN_A, :FUN_B # 但此项目被选中是，同时也选中 :FUN_A 和 :FUN_B
+
+- unselect: 当本项目被反选中时，也同时反选中另外的项目
+- no_export: 告诉RBuild在产生输出文件时忽略此项目。
+- hidden: 隐藏此项目，不在菜单上出现。
+- property: 这是一个中转器，用于集中设置其他项目，使代码看起来更紧凑，如：
+      property :hidden, :no_export, :default => 0
+   等效于：
+      hidden
+      no_export
+      default 0
+
+3.3.3.2 项目组织类
+- menu: 用于产生菜单，用于隐藏子项目，当进入此菜单时，显示子项目。
+- group: 对一组子项目进行归纳。和menu不同，group在当前视图中显示子项目。
+
+3.3.3.3 配置项目类
+- config: 用于简单的配置。对于config，只有"选中"和"未选中"两种状态。当然，这两种状态对应的配置值可以用range来指定。
+- choice: 用于复杂的配置哦。对于choice，要看是否为choice设置了范围(用range设置范围)：
+     如果range存在，则根据range的设置，从range里面选择配置。
+     如果range不存在，则提示用户输入自定义的值。
+
+3.3.3.4 文件包含类
+- source: 用于包含另外一个或者多个RConfig文件，例如：
+     source "src/RConfig"  # 包含src目录下的RConfig文件。
+    也可以在source参数中使用通配符，如：
+     source "*/RConfig"  # 包含所有子目录下的RConfig文件。
+    甚至可以这样：
+     source "**/*/RConfig" # 递归包含所有子目录下的RConfig文件。
+ 
+
+-- 4 安装RBuild --
+
+4.1. 安装 Ruby，可以从 http://www.ruby-lang.org 处下载。或者，如果是在Debian/Ubuntu下：
+      sudo apt-get install ruby1.8 rake
+
+4.2. 把 'scripts' 目录拷贝到你的项目目录下。
+
+4.3. 开始编写你的RConfig文件，通常第一个RConfig文件放在你的项目目录下。
+
+4.4. 在项目的目录下建立一个Rakefile文件, 内容如下：
+require 'scripts/rbuild'
+
+task :menuconfig do
+  rconf = RBuild::RConfig.new 'RConfig'
+  rconf.menuconfig()
+end
+4.5. 在项目目录下，键入：
+   rake menuconfig
+  
+
+-- 5 RBuild项目主页 --
+
+http://www.sourceforge.net/projects/rbuild/
+
+
+-- 6 LICENCE --
+
+RBuild is released under GNU GPLv2.
+
+Copy Right (c) 2008, Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+
+
+

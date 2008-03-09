@@ -265,22 +265,23 @@ module RBuild
     private
     
     def invoke_dsl(name, param = nil)
+      name_save = name
       name = name.to_s
       if param
-        if self.methods.include?(name)
+        if self.respond_to?(name)
           if param.is_a?(Array)
             self.send(name, *param)
           else
             self.send(name, param)
           end
         else
-          warning "no such property \"#{name}\" for \"#{@current[:title]}\""
+          @current[name_save] = param
         end
       else
-        if self.methods.include?(name)
+        if self.respond_to?(name)
           self.send(name)
         else
-          warning "no such property \"#{name}\" for \"#{@current[:title]}\""
+          @current[name_save] = true
         end
       end
     end
