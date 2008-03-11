@@ -28,7 +28,7 @@ RBuild DSL有四种类型：
 ＊ 第一种用于组织配置项的显示，如:'menu', 'group'。
 ＊ 第二种是用于产生配置项，如:'choice', 'config'。
 ＊ 第三种是属性描述，如：'title', 'default', 'help', 'range', 'depends', ...
-＊ 最后一种是用于包含其他RConfig文件，如：'source' 
+＊ 最后一种是用于包含其他RConfig文件，如：'source', 'target'
 
 一个简单的RConfig文件例子：
 
@@ -159,7 +159,14 @@ end
      source "*/RConfig"  # 包含所有子目录下的RConfig文件。
     甚至可以这样：
      source "**/*/RConfig" # 递归包含所有子目录下的RConfig文件。
- 
+- target: 用于指示当一个配置被选中时应该把那些文件加入到'target list'里面。
+    'target list'通常用于产生输出文件，如Makefile文件。例如：
+    
+    config :MUDLE_A => "enable module A" do
+      target 'module_a.c'
+    end
+    
+    target也可以放在config和choice外面，这时只要当前的依赖满足，就总是把文件放入'target list'里面。
 
 -- 4 安装RBuild --
 
