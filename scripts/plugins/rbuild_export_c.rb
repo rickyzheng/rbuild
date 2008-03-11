@@ -13,7 +13,7 @@
 
 module RBuild
 
-  module Export_C_Header
+  class RConfig
   
     public
     

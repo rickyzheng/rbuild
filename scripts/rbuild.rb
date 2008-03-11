@@ -14,8 +14,13 @@
 
 require 'fileutils'
 require 'yaml'
+
 require File.dirname(__FILE__) + '/rbuild_menuconfig'
-require File.dirname(__FILE__) + '/plugins/rbuild_export_c'
+Dir.glob File.dirname(__FILE__) + '/plugins/*.rb' do |plugin|
+  require File.dirname(__FILE__) + '/plugins/' + File.basename(plugin, '.rb')
+end
+
+require File.dirname(__FILE__) + '/rbuild_menuconfig'
 
 module RBuild
 
@@ -25,7 +30,7 @@ module RBuild
   class RConfig
   
     include Menuconfig
-    include Export_C_Header
+    #include Export_C_Header
  
     def initialize(rconfig_file = nil)
       @conf = {}
@@ -45,6 +50,11 @@ module RBuild
       @top_worker_path = File.expand_path(Dir.pwd)
       @top_rconfig_path = @top_worker_path
       @curpath = @top_worker_path
+      
+      @targets = []       # target files
+      @targets_cache = {} # cache the targets
+      @target_deps = {}   # target depend symbols
+      @target_flags = {}  # target special flags
       
       log_to_file(nil) # just delete the log file
       
@@ -141,6 +151,7 @@ module RBuild
         YAML.dump cfg, f
       end
       footer_msg "config saved to: #{config_file}"
+      
     end  
   
     # ----------- RBuild DSL APIs ---------
@@ -261,8 +272,61 @@ module RBuild
       end
     end
     
+    # collect target files to be compiled ...
+    def target(*arg)
+      arg.each do |a|
+        if a.is_a?(String)
+          target_add a
+        elsif a.is_a?(Hash)
+          a.each do |depend, target|
+            if target.is_a?(String)
+              target_add target, depend
+            elsif target.is_a?(Array)
+              target.each do |t|
+                target_add t, depend if t.is_a?(String)
+              end
+            end
+          end
+        else
+          warning "unsupported target type ! (of \"#{a}\", on \"#{@current[:title]}\")"
+        end
+      end
+    end
+    
+    def get_targets()
+      targets = []
+      @targets.each do |t|
+        targets << t if target_dep_ok?(t)
+      end
+      targets
+    end
+    
     # ----------------------------------------------------------------------------------------------
     private
+    
+    def target_dep_ok?(t)
+      return true unless @target_deps[t]
+      @target_deps[t].each do |dep|
+        node = @conf[dep]
+        if node
+          return false unless node[:hit]
+        else
+          warning "target #{t} declare depend: #{dep} is not defined !"
+          return false
+        end
+      end
+      true
+    end
+    
+    def target_add(target, depend = nil)
+      Dir.glob(@curpath + '/' + target) do |t|
+        unless @targets_cache[t]
+          @targets << t
+          @targets_cache[t] = true
+          @target_deps[t] = (depend.is_a?(Array) ? depend : [depend]) if depend
+        end
+      end
+    end
     
     def invoke_dsl(name, param = nil)
       name_save = name
