@@ -8,5 +8,4 @@ end
 # include all sub-folders RConfig files
 source "*/RConfig"
 
-target :MODULE_A => "a.c"
 target "b.c"

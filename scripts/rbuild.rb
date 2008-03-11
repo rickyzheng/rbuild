@@ -314,6 +314,7 @@ module RBuild
           warning "target #{t} declare depend: #{dep} is not defined !"
           return false
         end
+        # TODO: check depend's depend ... recrusevly
       end
       true
     end
@@ -323,7 +324,20 @@ module RBuild
         unless @targets_cache[t]
           @targets << t
           @targets_cache[t] = true
-          @target_deps[t] = (depend.is_a?(Array) ? depend : [depend]) if depend
+          @target_deps[t] = []
+        end
+        
+        case @current[:id]
+        when :choice, :config
+          @target_deps[t] << @current[:key] unless @target_deps[t].include?(@current[:key])
+        end
+
+        if depend
+          if depend.is_a?(Array)
+            depend.each {|d| @target_deps[t] << d unless @target_deps[t].include?(t) }
+          else
+            @target_deps[t] << depend unless @target_deps[t].include?(depend)
+          end
         end
       end
     end

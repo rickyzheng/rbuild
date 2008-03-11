@@ -1,5 +1,7 @@
 # because the ':NAMED_GROUP' already existed on the previous RConfig file,
 # so this group will be joined into the previous one
 group :NAMED_GROUP do
-    config :MODULE_A => "config of MODULE A from other RConfig file"
+  config :MODULE_A => "config of MODULE A from other RConfig file" do
+    target "a.c"
+  end
 end
