@@ -76,30 +76,32 @@ module RBuild
       lists.each do |list|
         node = list[:node]
         level = list[:level]
-        s = ""
-        case node[:id]
-        when :group
-          s = "  " + ('-' * level) + " #{node[:title]} " + ('-' * level)
-        when :menu
-          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "-+-" + " #{node[:title]}" + " -+-"
-        when :config
-          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "[#{node[:hit] ? "*" : " "}]" + " #{node[:title]}"
-        when :choice
-          s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "\{#{node[:hit] ? "*" : " "}\}" + " #{node[:title]}"
-          if node[:hit]
-            if node[:children].size > 0
-              s += " <#{@conf[node[:value]][:title]}>"
-            else
-              v = node[:value]
-              if v.is_a?(Fixnum) && v != 0
-                s += (" < #{v} (0x" + ('%X' % v) + ") >")
+        if node[:title].to_s.size > 0
+          s = ""
+          case node[:id]
+          when :group
+            s = "  " + ('-' * level) + " #{node[:title]} " + ('-' * level)
+          when :menu
+            s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "-+-" + " #{node[:title]}" + " -+-"
+          when :config
+            s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "[#{node[:hit] ? "*" : " "}]" + " #{node[:title]}"
+          when :choice
+            s = "#{cursor == node ? ">" : " "}" + (' ' * level) + "\{#{node[:hit] ? "*" : " "}\}" + " #{node[:title]}"
+            if node[:hit]
+              if node[:children].size > 0
+                s += " <#{@conf[node[:value]][:title]}>"
               else
-                s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
-              end
-            end              
+                v = node[:value]
+                if v.is_a?(Fixnum) && v != 0
+                  s += (" < #{v} (0x" + ('%X' % v) + ") >")
+                else
+                  s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
+                end
+              end              
+            end
           end
+          puts " " + s
         end
-        puts " " + s
       end
       puts ""
       show_footer_bar()

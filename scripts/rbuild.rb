@@ -566,7 +566,6 @@ module RBuild
     def set_node_no(node)
       if node_yes?(node)
         node[:hit] = nil
-        process_sel_unsel(node)
         if node[:id] == :config
           parent = @conf[node[:parent]]
           if parent[:id] == :choice && parent[:value] == node[:key]
