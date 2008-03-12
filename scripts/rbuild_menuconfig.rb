@@ -8,6 +8,8 @@
 # http://rbuild.sourceforge.net/
 #
 
+$debug_in_rb = false
+
 
 module RBuild
 
@@ -125,6 +127,11 @@ module RBuild
     
     # read key press without echo ...
     def getch
+
+      if $debug_in_rb
+        return STDIN.getc
+      end
+      
       if windows?
         require 'Win32API'
         fun = Win32API.new("crtdll", "_getch", [], 'L')
@@ -322,13 +329,9 @@ module RBuild
         c = getch()
         footer_clear()
         case c
-        when ?\r, KEY_SPACE, KEY_RIGHT # ENTER, SPACE, RIGHT -->
+        when ?\r, KEY_SPACE, KEY_RIGHT, '6'[0] # ENTER, SPACE, RIGHT -->
           if cursor[:id] == :config
-            #if cursor[:range]
-            #  node_input(cursor)
-            #else
-              toggle_node cursor
-            #end
+            toggle_node cursor
           else
             list_nodes = get_list_nodes(cursor)
             if list_nodes && list_nodes.size > 0
@@ -344,11 +347,11 @@ module RBuild
               end
             end
           end
-        when KEY_UP # UP
+        when KEY_UP, '8'[0] # UP
           cursor = nav_prev(list_nodes, cursor)
-        when KEY_DOWN # DOWN
+        when KEY_DOWN, '2'[0] # DOWN
           cursor = nav_next(list_nodes, cursor)
-        when KEY_LEFT, KEY_ESC
+        when KEY_LEFT, KEY_ESC, '4'[0]
           begin
             current = @conf[current[:parent]]
           end while current[:id] != :menu # always browser from a menu !

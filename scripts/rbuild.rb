@@ -323,29 +323,39 @@ module RBuild
       return true unless @target_deps[t]
       @target_deps[t].each do |dep|
         node = @conf[dep]
-        return false unless node_dep_ok?(node, true)
+        return false unless dep_node_ok?(node)
       end
       true
     end
     
-    def node_dep_ok?(node, in_dep = false)
-      # no such node ? dep fail !
-      return false unless node
-      
+    # check node's dep depandancy, and node it self.
+    def dep_node_ok?(dep_node, exceptions = [])
+        # no such node ? dep fail !
+        return false unless dep_node
+        return true if exceptions.include?(dep_node[:key])
+
+        # check my depends first
+        dep_node[:depends].each do |dep|
+          next if exceptions.include?(dep)
+          return false unless dep_node_ok?(@conf[dep], exceptions)
+        end
+
+        case dep_node[:id]
+        when :menu, :group
+          return true # for :menu, :group, or :choice, if depends are ok, I'm ok.
+        when :config, :choice
+          return node_no?(dep_node) ? false : true
+        end
+        false # unknown type ? false !
+    end
+    
+    # check node's dep depandancy only.
+    def node_dep_ok?(node, exceptions = [])
       # check my depends first
       node[:depends].each do |dep|
-        return false unless node_dep_ok?(@conf[dep], true)
+        return false unless dep_node_ok?(@conf[dep], exceptions)
       end
-      
-      return true unless in_dep
-      
-      case node[:id]
-      when :menu, :group
-        return true # for :menu, :group, or :choice, if depends are ok, I'm ok.
-      when :config, :choice
-        return node_no?(node) ? false : true
-      end
-      false # unknown type ? false !
+      return true
     end
     
     def target_add(target, depend = nil)
@@ -510,8 +520,6 @@ module RBuild
       old = @conf[node[:key]]
       if old # node exist ?
         @stack.push @current
-        puts "node #{node[:title]}  already exist."
-        getch()
         @current = old
         block.call if block
         @current = @stack.pop                        
@@ -571,7 +579,7 @@ module RBuild
                 node[:value] = child
                 set_node_yes(@conf[child])
               else
-                set_node_no(@conf[child])  
+                set_node_no(@conf[child])
               end
             end
           else
@@ -587,13 +595,21 @@ module RBuild
       end      
     end
     
+    # search ancestor which :id is included in ids.
+    def search_ancestor_with_ids(node, ids)
+      parent = @conf[node[:parent]]
+      return nil if parent == top_node()
+      return parent if ids.include?(parent[:id])
+      return search_ancestor_with_ids(parent, ids)
+    end
+    
     # set the node's value to {yes}
     def set_node_yes(node)
       if node_no?(node)
         if node[:id] == :config
           node[:hit] = true
           process_sel_unsel(node)
-          parent = search_ancestor(node, [:choice, :config])
+          parent = search_ancestor_with_ids(node, [:choice, :config])
           if parent
             if parent[:id] == :choice
               set_node_value(parent, node[:key])
@@ -619,7 +635,7 @@ module RBuild
           node[:hit] = nil
           if node[:id] == :config
             # set parent to "no" if have a :choice parent.
-            parent = search_ancestor(node, [:choice])
+            parent = search_ancestor_with_ids(node, [:choice])
             if parent && parent[:value] == node[:key]
               set_node_no(parent)
             end
@@ -667,15 +683,21 @@ module RBuild
         children.each do |child|
           node = @conf[child]
           unless node.nil? || node[:hidden]
-            if node_dep_ok?(node)
-              if node[:id] == :group || node[:id] == :config
-                list_nodes << {:node => node, :level => level}
-                get_list_nodes(node, list_nodes, level + 1) if node[:children].size > 0
-              else
+            if parent[:id] == :choice
+              if node_dep_ok?(node, [node[:key], parent[:key]])
                 list_nodes << {:node => node, :level => level}
               end
-            end
-          end # end of child[:hidden]
+            else
+              if node_dep_ok?(node)
+                if node[:id] == :group || node[:id] == :config
+                  list_nodes << {:node => node, :level => level}
+                  get_list_nodes(node, list_nodes, level + 1) if node[:children].size > 0
+                else
+                  list_nodes << {:node => node, :level => level}
+                end
+              end
+            end # end of if partne[:id] == :choice
+          end # end of child.nil? || child[:hidden]
         end # end of children.each
       end
       list_nodes
@@ -726,9 +748,7 @@ module RBuild
   
 end
 
-puts "__FILE__ : #{__FILE__}"
-puts "$0: #{$0}"
-if __FILE__ == $0
+if __FILE__ == $0 || 1
   Dir.chdir File.expand_path(File.dirname(__FILE__))
   rconf = RBuild::RConfig.new('../example/RConfig')
   rconf.menuconfig()
