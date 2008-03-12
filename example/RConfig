@@ -17,6 +17,20 @@ menu "Config Example" do
       range 0, 1
     end
   end
+  group "Cascade Config" do
+    config :TOP_CFG => "top level config" do
+      config :SUB_CFG_A => "sub level config A"
+      config :SUB_CFG_B => "sub level config B"
+      choice :SUB_CHOICE => "sub level choice" do
+        range 1, 2, 3
+      end
+      menu "Menu inside Config !" do
+        config "Yet another config ..." do
+          property :no_export
+        end
+      end
+    end
+  end
 end
 
 menu "Choice Example" do

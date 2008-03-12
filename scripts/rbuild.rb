@@ -304,19 +304,40 @@ module RBuild
     # ----------------------------------------------------------------------------------------------
     private
     
+    def anonymous_key()
+      @anonymous_idx ||= 0
+      key = "ANONYMOUS_#{@anonymous_idx}".to_sym
+      @anonymous_idx += 1
+      key
+    end
+    
     def target_dep_ok?(t)
       return true unless @target_deps[t]
       @target_deps[t].each do |dep|
         node = @conf[dep]
-        if node
-          return false unless node[:hit]
-        else
-          warning "target #{t} declare depend: #{dep} is not defined !"
-          return false
-        end
-        # TODO: check depend's depend ... recrusevly
+        return false unless node_dep_ok?(node, true)
       end
       true
+    end
+    
+    def node_dep_ok?(node, in_dep = false)
+      # no such node ? dep fail !
+      return false unless node
+      
+      # check my depends first
+      node[:depends].each do |dep|
+        return false unless node_dep_ok?(@conf[dep], true)
+      end
+      
+      return true unless in_dep
+      
+      case node[:id]
+      when :menu, :group
+        return true # for :menu, :group, or :choice, if depends are ok, I'm ok.
+      when :config, :choice
+        return node_no?(node) ? false : true
+      end
+      false # unknown type ? false !
     end
     
     def target_add(target, depend = nil)
@@ -388,14 +409,21 @@ module RBuild
     # or :KEY
     # to menu/choice/config/group
     def args_to_key_desc(args)
-      if args.size == 1
+      if args.size == 0
+        key = anonymous_key()
+        desc = ""
+      elsif args.size == 1
         if args[0].is_a?(Hash)
-          h = args[0]
           key = args[0].keys[0]
           desc = args[0][key]
-        else
+        elsif args[0].is_a?(Symbol)
           key = args[0]
           desc = key.to_s
+        elsif args[0].is_a?(String)
+          key = anonymous_key()
+          desc = args[0].to_s
+        else
+          warning "Invalid parameters on \"#{@current[:title]}\""
         end
       elsif args.size == 2
         key, desc = args[0], args[1]
@@ -611,28 +639,10 @@ module RBuild
         children.each do |child|
           node = @conf[child]
           unless node.nil? || node[:hidden]
-            depok = true
-            node[:depends].each do |dep|
-              dep_node = @conf[dep]
-              unless dep_node
-                # can't find depend node ??, stop searching dependancy
-                depok = false
-                break;
-              else
-                # for :config, dep_node must not {no}
-                # for :choice, dep_node must no {no} except dep_node is the direct parent.
-                if (dep_node[:id] == :config && node_no?(dep_node)) ||
-                    (dep_node[:id] == :choice && node_no?(dep_node) && (node[:parent] != dep_node[:key]))
-                  depok = false
-                  break # stop searching dependancy
-                end
-              end
-            end
-
-            if depok
-              if node[:id] == :group
+            if node_dep_ok?(node)
+              if node[:id] == :group || node[:id] == :config
                 list_nodes << {:node => node, :level => level}
-                get_list_nodes(node, list_nodes, level + 1)
+                get_list_nodes(node, list_nodes, level + 1) if node[:children].size > 0
               else
                 list_nodes << {:node => node, :level => level}
               end

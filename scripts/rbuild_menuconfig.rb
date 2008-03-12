@@ -330,7 +330,7 @@ module RBuild
         when KEY_LEFT, KEY_ESC
           begin
             current = @conf[current[:parent]]
-          end while current[:id] == :group
+          end while current[:id] != :menu # always browser from a menu !
           cursor = nav_stack.pop if nav_stack.size > 0
         when ?q, ?Q
           export()
