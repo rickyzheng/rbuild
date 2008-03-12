@@ -158,25 +158,25 @@ module RBuild
     def menu(*args, &block)
       key, desc = args_to_key_desc(args)
       node = {:id => :menu, :key => key, :title => desc}
-      process_node(@conf[key], node, block)
+      process_node(node, block)
     end
   
     def group(*args, &block)
       key, desc = args_to_key_desc(args)
       node = {:id => :group, :key => key, :title => desc}
-      process_node(@conf[key], node, block)
+      process_node(node, block)
     end
     
     def choice(*args, &block)
       key, desc = args_to_key_desc(args)
       node = {:id => :choice, :key => key, :value => nil, :title => desc, :hit => false}
-      process_node(@conf[key], node, block)
+      process_node(node, block)
     end
   
     def config(*args, &block)
       key, desc = args_to_key_desc(args)
       node = {:id => :config, :key => key, :title => desc, :hit => false, :value => nil }
-      process_node(@conf[key], node, block)
+      process_node(node, block)
     end
   
     def depends(*keys)
@@ -506,9 +506,12 @@ module RBuild
     end
   
     # process current DSL calling
-    def process_node(old, node, block)
+    def process_node(node, block)
+      old = @conf[node[:key]]
       if old # node exist ?
         @stack.push @current
+        puts "node #{node[:title]}  already exist."
+        getch()
         @current = old
         block.call if block
         @current = @stack.pop                        
