@@ -222,6 +222,10 @@ module RBuild
     def bool
       @current[:bool] = true
     end
+    
+    def digi
+      @current[:digi] = true
+    end
   
     # set :choice or :config node value range
     # range can be:
