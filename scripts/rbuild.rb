@@ -211,12 +211,16 @@ module RBuild
       @current[:hidden] = true
     end
     
+    def hex
+      @current[:hex] = true
+    end
+    
     def string
-      @current[:type] = :string
+      @current[:string] = true
     end
     
     def bool
-      @current[:type] = :bool
+      @current[:bool] = true
     end
   
     # set :choice or :config node value range
@@ -444,8 +448,10 @@ module RBuild
     def search_ancestor(node, key)
       worker = node
       while worker && worker != top_node()
-        if worker[:key] == key
-          return worker
+        if key.is_a?(Array)
+          return worker if key.include?(worker[:key])
+        else
+          return worker if key == worker[:key]
         end
         worker = @conf[worker[:parent]]
       end
@@ -580,9 +586,13 @@ module RBuild
         if node[:id] == :config
           node[:hit] = true
           process_sel_unsel(node)
-          parent = @conf[node[:parent]]
-          if parent[:id] == :choice
-            set_node_value(parent, node[:key])
+          parent = search_ancestor(node, [:choice, :config])
+          if parent
+            if parent[:id] == :choice
+              set_node_value(parent, node[:key])
+            elsif parent[:id] == :config
+              set_node_yes(parent) if node_no?(parent)
+            end
           end
         else
           error "Bug! why call 'set_node_yes' on a non-config node (#{node[:title]}) ?"
@@ -592,20 +602,31 @@ module RBuild
     
     # set the node's value to {no}
     def set_node_no(node)
-      if node_yes?(node)
-        node[:hit] = nil
-        if node[:id] == :config
-          parent = @conf[node[:parent]]
-          if parent[:id] == :choice && parent[:value] == node[:key]
-            set_node_no(parent)
+      return unless node
+      if node[:id] == :menu || node[:id] == :group
+        node[:children].each do |child|
+          set_node_no(@conf[child])
+        end
+      else
+        if node_yes?(node)
+          node[:hit] = nil
+          if node[:id] == :config
+            # set parent to "no" if have a :choice parent.
+            parent = search_ancestor(node, [:choice])
+            if parent && parent[:value] == node[:key]
+              set_node_no(parent)
+            end
+            # set children to "no"
+            node[:children].each do |child|
+               set_node_no(@conf[child])
+            end
+          elsif node[:id] == :choice
+            node[:value] = nil
+            node[:children].each do |child|
+               set_node_no(@conf[child])
+            end
+          else
           end
-        elsif node[:id] == :choice
-          node[:value] = nil
-          node[:children].each do |child|
-             set_node_no(@conf[child])
-          end
-        else
-          warning "call 'set_node_no' to neither :choice nor :config node (#{node[:title]})?"
         end
       end
     end

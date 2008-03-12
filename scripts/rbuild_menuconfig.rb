@@ -92,12 +92,12 @@ module RBuild
                 s += " <#{@conf[node[:value]][:title]}>"
               else
                 v = node[:value]
-                if v.is_a?(Fixnum) && v != 0
-                  s += (" < #{v} (0x" + ('%X' % v) + ") >")
+                if node[:hex]
+                  s += (" < 0x" + ('%X' % v) + " >")
                 else
-                  s += " <#{node[:value].to_s}>"  # TODO: maybe showing desc would be better ...
+                  s += (" < #{v.to_s} >")
                 end
-              end              
+              end
             end
           end
           puts " " + s
@@ -164,13 +164,20 @@ module RBuild
             break
           else
             if range.min.is_a?(Fixnum)
-              if s =~ /^[0-9]+$/
-                value = s.to_i
-              elsif s =~ /^0[xX][0-9a-fA-F]+$/
-                value = s.hex
+              if node[:hex]
+                if s =~ /^0[xX][0-9a-fA-F]+$/
+                  value = s.hex
+                else
+                  puts "Invalid input, please input HEX format, start with 0x..."
+                  redo
+                end
               else
-                puts "Invalid input, press any key try again ..."
-                redo
+                if s =~ /^[0-9]+$/
+                  value = s.to_i
+                else
+                  puts "Invalid input, only 0-9 digis allowed, press any key try again ..."
+                  redo
+                end
               end
             else
               value = s
@@ -179,7 +186,7 @@ module RBuild
               set_node_value(node, value)
               break
             else
-              puts "No in the range, press any key try again ..."
+              puts "Input no in the range, press any key try again ..."
               getch()
             end
           end
@@ -187,22 +194,36 @@ module RBuild
         
       else # no :range provided.
 
-        print "Input: "
-        
-        s = STDIN.gets.chomp.strip
-
-        if s == ""
-          set_node_no(node)
-        else
-          if s =~ /^[0-9]+$/
-            value = s.to_i
+        while true
+          print "Input: "
+          s = STDIN.gets.chomp.strip
+          if s == ""
+            set_node_no(node)
           else
-            value = s
+            if node[:hex]
+              if s =~ /^0[xX][0-9a-fA-F]+$/
+                value = s.hex
+              else
+                puts "Invalid input, please input HEX format number, start with 0x... "
+                getch()
+                redo
+              end
+            elsif node[:digi]
+              if s =~ /^[0-9]+$/
+                value = s.to_i
+              else
+                puts "Invalid input, please input numbers."
+                getch()
+                redo
+              end
+            else
+              value = s
+            end
+            set_node_value(node, value)
           end
-          set_node_value(node, value)
+          break
         end
       end
-      
     end
     
     # node value input by choice one of the value from range (could be array or hash)
