@@ -9,14 +9,44 @@ A RConfig's syntax looks more like KConfig, plus lots of ruby flavors. Since RCo
 
 -- RConfig --
 
-All RConfig instructions falls into three catalogs:
+All RConfig instructions falls into four catalogs:
  - organizing: 'menu', 'group'
  - configuration: 'choice', 'config'
- - property: 'title', 'default', 'help', ...
+ - property: 'title', 'default', 'help', 'range', 'depends', 'select', 'unselect' and 'property'
+ - file inclusion: 'source'
 
+A Simple RConfig example:
 
+title "Welcom to my software config system !"
+menu "Package config" do
+	config :PACKAGE_A => "enable package A" 
+	group "Package A options" do
+		depends :PACKAGE_A
+		config :PACKAGE_A_FUN_A => "function A"
+		config :PACKAGE_A_FUN_B => "function B"
+	end
+	config :PACKAGE_B => "enable package B"
+	choice :PACKAGE_B_PARAM => "select package B param" do
+		depends :PACKAGE_B
+		default 200
+		range 100, 200, 300
+	end
+end
+menu "RBuild Configuration" do
+  group "RBuild System Options" do
+    choice :RBUILD_SYS_CONFIG_FILE => "RBuild Configuration File" do
+      property :no_export    # do not export this, it's for rbuild system internal.
+      default 'rb.config'
+    end
+    
+    choice :RBUILD_PLUGIN_EXP_C_HEADER_FILE => "RBuild Export File" do
+      property :no_export     # do not export this, it's for rbuild system internal.
+      default 'config.h'
+    end
+  end
+end
 
--- TO BE CONTINUED --
+Please have a look the RConfig file under 'example' folder, it almost explains everything about RConfig DSL.
 
 
 -- Install --
@@ -24,8 +54,16 @@ All RConfig instructions falls into three catalogs:
 1. Install Ruby interpreter (http://www.ruby-lang.org)
 2. Copy 'scripts' directory into your target software package
 3. Write your 'RConfig' files
-4. at your target software package's root dir, run:
-	ruby scripts/rbuild.rb
+4. Create a 'Rakefile' as:
+      require 'scripts/rbuild'
+
+      task :menuconfig do
+        rconf = RBuild::RConfig.new 'RConfig'
+        rconf.menuconfig()
+      end
+5. at your target software package's root dir, run:
+    rake menuconfig
+
 
 -- Project Home --
 

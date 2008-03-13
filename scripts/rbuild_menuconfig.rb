@@ -370,7 +370,11 @@ module RBuild
         when ?s, ?S
           save_config()
         when ?l, ?L
-          if merge!()
+          cfg_file_node = @conf[:RBUILD_SYS_CONFIG_LOAD_FILE]
+          if cfg_file_node
+            config_file ||= get_node_value(cfg_file_node).to_s
+          end
+          if merge!(config_file)
             current = top_node()
             list_nodes, cursor = show_list_nodes(current)
             nav_stack = []

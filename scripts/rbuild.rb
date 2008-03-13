@@ -55,6 +55,7 @@ module RBuild
       @dirstack = []
       @top_rconfig_path = @top_worker_path
       @curpath = @top_worker_path
+      @sources = []
       
       @targets = []       # target files
       @targets_cache = {} # cache the targets
@@ -72,8 +73,10 @@ module RBuild
       @deferrers.each {|node, value| set_node_value(node, value) }
     end
     
+    # merge config from config_file, if config_file is nil, use @conf[:RBUILD_SYS_CONFIG_LOAD_FILE]
+    # otherwise use DEFAULT_CONFIG_FILE
     def merge!(config_file = nil)
-      cfg_file_node = @conf[:RBUILD_SYS_CONFIG_FILE]
+      cfg_file_node = @conf[:RBUILD_SYS_CONFIG_LOAD_FILE]
       if cfg_file_node && cfg_file_node[:no_export]
         config_file ||= get_node_value(cfg_file_node).to_s
       end
@@ -123,12 +126,8 @@ module RBuild
     end
   
     # load config from file.
-    # if file is nil, search the @conf[:RBUILD_SYS_CONFIG_FILE], use [:value] as file name.
+    # if file is nil, use DEFAULT_CONFIG_FILE
     def load_config(config_file = nil)
-      cfg_file_node = @conf[:RBUILD_SYS_CONFIG_FILE]
-      if cfg_file_node && cfg_file_node[:no_export]
-        config_file ||= get_node_value(cfg_file_node).to_s
-      end
       config_file ||= RBuild::DEFAULT_CONFIG_FILE
       return unless File.exist?(config_file)
       
@@ -180,9 +179,10 @@ module RBuild
     private :get_node_value
     
     # save config to file.
-    # if file is nil, search the @conf[:RBUILD_SYS_CONFIG_FILE], use [:value] as file name.
+    # if file is nil, search the @conf[:RBUILD_SYS_CONFIG_SAVE_FILE], use [:value] as file name.
+    # otherwise, use DEFAULT_CONFIG_FILE
     def save_config(config_file = nil)
-      cfg_file_node = @conf[:RBUILD_SYS_CONFIG_FILE]
+      cfg_file_node = @conf[:RBUILD_SYS_CONFIG_SAVE_FILE]
       if cfg_file_node && cfg_file_node[:no_export]
         config_file ||= get_node_value(cfg_file_node).to_s
       end
@@ -296,9 +296,11 @@ module RBuild
     #     */RConfig   ==> search any sub folders
     # or:
     #     **/RConfig  ==> reclusivly search any sub folders
-    def source(dest)
-      Dir.glob(dest).each do |fn|
-        exec_rconfig_file(fn)
+    def source(*args)
+      args.each do |dest|
+        Dir.glob(dest).each do |fn|
+          exec_rconfig_file(fn)
+        end
       end
     end
     
@@ -468,19 +470,23 @@ module RBuild
     end
     
     def exec_rconfig_file(fn)
-      File.open(fn) do |f|
-        @dirstack.push @curpath
-        @curpath = File.expand_path(File.dirname(fn))
-        Dir.chdir(@curpath)
-        begin
-          eval f.read
-        rescue SyntaxError => e
-          error "RConfig file syntax error?"
-          error "from file: #{abs_file_name(@curpath + '/' + File.basename(fn))}"
-          # error "Backtrace: #{e.backtrace.join("\n")}"
+      full = File.expand_path(fn)
+      unless @sources.include?(full)
+        @sources << full
+        File.open(fn) do |f|
+          @dirstack.push @curpath
+          @curpath = File.expand_path(File.dirname(fn))
+          Dir.chdir(@curpath)
+          begin
+            eval f.read
+          rescue SyntaxError => e
+            error "RConfig file syntax error?"
+            error "from file: #{abs_file_name(@curpath + '/' + File.basename(fn))}"
+            # error "Backtrace: #{e.backtrace.join("\n")}"
+          end
+          @curpath = @dirstack.pop
+          Dir.chdir(@curpath)
         end
-        @curpath = @dirstack.pop
-        Dir.chdir(@curpath)
       end
     end
     
