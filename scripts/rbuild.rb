@@ -78,7 +78,7 @@ module RBuild
         config_file ||= get_node_value(cfg_file_node).to_s
       end
       config_file ||= RBuild::DEFAULT_CONFIG_FILE
-      return unless File.exist?(config_file)
+      return nil unless File.exist?(config_file)
       
       cfg = YAML.load_file(config_file)
       conf = cfg[:conf]
@@ -86,14 +86,26 @@ module RBuild
         n = @conf[key]
         if n && n[:id] == node[:id] && (n[:id] == :config || n[:id] == :choice)
           n[:hit] = node[:hit]
+          n[:value] = node[:value]
         end
       end
+      @conf
     end
     
     def get_value(name)
       node = @conf[name]
       if node
         get_node_value(node)
+      else
+        nil
+      end
+    end
+    
+    # check the whether the node is hitted with a given name
+    def hit?(name)
+      node = @conf[name]
+      if node
+        node[:hit]
       else
         nil
       end
@@ -149,7 +161,8 @@ module RBuild
             value = nil
             node[:children].each do |child|
               if @conf[child][:hit]
-                value = get_node_value(@conf[child])
+                #value = get_node_value(@conf[child])
+                value = child
                 break
               end
             end
@@ -186,27 +199,27 @@ module RBuild
   
     # ----------- RBuild DSL APIs ---------
     def menu(*args, &block)
-      key, desc = args_to_key_desc(args)
+      key, desc, attr_cb = args_to_key_desc(args)
       node = {:id => :menu, :key => key, :title => desc}
-      process_node(node, block)
+      process_node(node, attr_cb, block)
     end
   
     def group(*args, &block)
-      key, desc = args_to_key_desc(args)
+      key, desc, attr_cb = args_to_key_desc(args)
       node = {:id => :group, :key => key, :title => desc}
-      process_node(node, block)
+      process_node(node, attr_cb, block)
     end
     
     def choice(*args, &block)
-      key, desc = args_to_key_desc(args)
+      key, desc, attr_cb = args_to_key_desc(args)
       node = {:id => :choice, :key => key, :value => nil, :title => desc, :hit => false}
-      process_node(node, block)
+      process_node(node, attr_cb, block)
     end
   
     def config(*args, &block)
-      key, desc = args_to_key_desc(args)
+      key, desc, attr_cb = args_to_key_desc(args)
       node = {:id => :config, :key => key, :title => desc, :hit => false, :value => nil }
-      process_node(node, block)
+      process_node(node, attr_cb, block)
     end
   
     def depends(*keys)
@@ -339,6 +352,27 @@ module RBuild
       targets
     end
     
+    # search plugin config keys from @conf, if found, call plugin.
+    # the plugin name is part of config key: RBUILD_PLUGIN_XXX
+    # if file is provided, use file as file name, otherwise use
+    # the value of @conf[:RBUILD_PLUGIN_XXX]
+    def export(file = nil)
+      @conf.each do |key, node|
+        if node[:no_export] && key.to_s =~ /RBUILD_PLUGIN_(.*)/
+          plugin = $1.downcase
+          @dirstack << @curpath
+          @curpath = @top_rconfig_path
+          Dir.chdir @curpath
+          if self.methods.include?(plugin)
+            self.send(plugin, file || get_node_value(node).to_s)
+          else
+            warning "plugin \"#{plugin}\" not installed ?"
+          end
+          Dir.chdir @dirstack.pop
+        end
+      end
+    end
+    
     # ----------------------------------------------------------------------------------------------
     private
     
@@ -453,32 +487,53 @@ module RBuild
     # conver the args to key,desc pair
     # so you can pass parameters like:
     #    :KEY => "desc"
-    # or :KEY, "desc"
     # or :KEY
+    # or "desc"
     # to menu/choice/config/group
     def args_to_key_desc(args)
-      if args.size == 0
+      attr_cb = nil
+      if args.size == 0 # example, group do ... end
         key = anonymous_key()
         desc = ""
       elsif args.size == 1
         if args[0].is_a?(Hash)
+          # example, choice :CPU=> "choice CPU", :no_export do ... end
           key = args[0].keys[0]
           desc = args[0][key]
         elsif args[0].is_a?(Symbol)
+          # example, config :ENABLE_XXX do ... end
           key = args[0]
           desc = key.to_s
         elsif args[0].is_a?(String)
+          # example, menu "Config AAA function" do ... end
           key = anonymous_key()
           desc = args[0].to_s
         else
           warning "Invalid parameters on \"#{@current[:title]}\""
         end
-      elsif args.size == 2
-        key, desc = args[0], args[1]
-      else
-        warning "Invalid parameters on \"#{@current[:title]}\""
+      elsif args.size > 1
+        # for args.size > 1, the first arg MUST always the symbol!
+        unless args[0].is_a?(Symbol)
+          warning "Invalid parameters on \"#{@current[:title]}\""
+        else
+          key = args[0]
+          desc = key.to_s
+          attr_cb = proc do
+            args.each do |a|
+              next if a == args[0]
+              if a.is_a?(Hash)
+                # example, config :MODULE_A, :no_export, :title => "enable module a", :default => true
+                a.each do |name, param|
+                  invoke_dsl name, param
+                end
+              else
+                invoke_dsl a
+              end
+            end
+          end
+        end
       end
-      return key, desc
+      return key, desc, attr_cb
     end    
     
     # process node's select/unselect instruction
@@ -546,11 +601,12 @@ module RBuild
     end
   
     # process current DSL calling
-    def process_node(node, block)
+    def process_node(node, arrt_cb, block)
       old = @conf[node[:key]]
       if old # node exist ?
         @stack.push @current
         @current = old
+        arrt_cb.call if arrt_cb
         block.call if block
         @current = @stack.pop                        
       else
@@ -565,31 +621,12 @@ module RBuild
         @stack.push @current
         @conf[node[:key]] = node
         @current = node
+        arrt_cb.call if arrt_cb
         block.call if block
         @current = @stack.pop
       end
     end
 
-    # search plugin config keys from @conf, if found, call plugin.
-    # the plugin name is part of config key: RBUILD_PLUGIN_XXX
-    # if file is provided, use file as file name, otherwise use
-    # the value of @conf[:RBUILD_PLUGIN_XXX]
-    def export(file = nil)
-      @conf.each do |key, node|
-        if node[:no_export] && key.to_s =~ /RBUILD_PLUGIN_(.*)/
-          plugin = $1.downcase
-          @dirstack << @curpath
-          @curpath = @top_rconfig_path
-          Dir.chdir @curpath
-          if self.methods.include?(plugin)
-            self.send(plugin, file || get_node_value(node).to_s)
-          else
-            warning "plugin \"#{plugin}\" not installed ?"
-          end
-          Dir.chdir @dirstack.pop
-        end
-      end
-    end
     
     def windows?
       RUBY_PLATFORM =~ /win/
@@ -772,14 +809,13 @@ module RBuild
     def footer_clear()
       @footer_msg = nil
     end
-
   end
-
   
 end
 
-if __FILE__ == $0 || 1
+if __FILE__ == $0
   Dir.chdir File.expand_path(File.dirname(__FILE__))
   rconf = RBuild::RConfig.new('../example/RConfig')
+  rconf.merge!
   rconf.menuconfig()
 end

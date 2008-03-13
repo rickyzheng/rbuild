@@ -10,7 +10,6 @@
 
 $debug_in_rb = false
 
-
 module RBuild
 
   module Menuconfig
@@ -161,14 +160,19 @@ module RBuild
       clear_screen()
       puts "=== #{node[:title]} ==="
       puts ""
+      puts "  tips: hit ENTER only to keep old value"
+      puts "        input ``` reset to empty"
+      puts ""
     
       if range
         while true
           print "Input < #{range.min}..#{range.max} >: "
           s = STDIN.gets.chomp
-          if s == ""
+          if s == "```"
             set_node_no(node)
             break
+          elsif s == ""
+            break # using current value
           else
             if range.min.is_a?(Fixnum)
               if node[:hex]
@@ -202,10 +206,14 @@ module RBuild
       else # no :range provided.
 
         while true
+          puts "Current value: #{node[:value]}" if node[:value] && node[:value].to_s != ""
           print "Input: "
           s = STDIN.gets.chomp.strip
-          if s == ""
+          if s == "```"
             set_node_no(node)
+            break
+          elsif s == ""
+            break # using the default value
           else
             if node[:hex]
               if s =~ /^0[xX][0-9a-fA-F]+$/
@@ -329,7 +337,7 @@ module RBuild
         c = getch()
         footer_clear()
         case c
-        when ?\r, KEY_SPACE, KEY_RIGHT, '6'[0] # ENTER, SPACE, RIGHT -->
+        when ?\r, KEY_SPACE, KEY_RIGHT # ENTER, SPACE, RIGHT -->
           if cursor[:id] == :config
             toggle_node cursor
           else
@@ -347,11 +355,11 @@ module RBuild
               end
             end
           end
-        when KEY_UP, '8'[0] # UP
+        when KEY_UP # UP
           cursor = nav_prev(list_nodes, cursor)
-        when KEY_DOWN, '2'[0] # DOWN
+        when KEY_DOWN # DOWN
           cursor = nav_next(list_nodes, cursor)
-        when KEY_LEFT, KEY_ESC, '4'[0]
+        when KEY_LEFT, KEY_ESC
           begin
             current = @conf[current[:parent]]
           end while current[:id] != :menu # always browser from a menu !
@@ -362,7 +370,7 @@ module RBuild
         when ?s, ?S
           save_config()
         when ?l, ?L
-          if load_config()
+          if merge!()
             current = top_node()
             list_nodes, cursor = show_list_nodes(current)
             nav_stack = []
