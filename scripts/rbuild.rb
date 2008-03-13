@@ -33,6 +33,12 @@ module RBuild
     #include Export_C_Header
  
     def initialize(rconfig_file = nil)
+      @top_worker_path = File.expand_path(Dir.pwd)
+      log_to_file(nil) # just delete the log file
+      start_from(rconfig_file)
+    end
+    
+    def start_from(rconfig_file)
       @conf = {}
       @current = {:id => :menu, 
             :key => :RBUILD_TOP_GLOBAL,
@@ -47,7 +53,6 @@ module RBuild
       @deferrers = {} # deferrer node setting value, |node, value|
       
       @dirstack = []
-      @top_worker_path = File.expand_path(Dir.pwd)
       @top_rconfig_path = @top_worker_path
       @curpath = @top_worker_path
       
@@ -55,8 +60,6 @@ module RBuild
       @targets_cache = {} # cache the targets
       @target_deps = {}   # target depend symbols
       @target_flags = {}  # target special flags
-      
-      log_to_file(nil) # just delete the log file
       
       if rconfig_file
         unless File.exist?(rconfig_file)
@@ -67,6 +70,33 @@ module RBuild
         end
       end
       @deferrers.each {|node, value| set_node_value(node, value) }
+    end
+    
+    def merge!(config_file = nil)
+      cfg_file_node = @conf[:RBUILD_SYS_CONFIG_FILE]
+      if cfg_file_node && cfg_file_node[:no_export]
+        config_file ||= get_node_value(cfg_file_node).to_s
+      end
+      config_file ||= RBuild::DEFAULT_CONFIG_FILE
+      return unless File.exist?(config_file)
+      
+      cfg = YAML.load_file(config_file)
+      conf = cfg[:conf]
+      conf.each do |key, node|
+        n = @conf[key]
+        if n && n[:id] == node[:id] && (n[:id] == :config || n[:id] == :choice)
+          n[:hit] = node[:hit]
+        end
+      end
+    end
+    
+    def get_value(name)
+      node = @conf[name]
+      if node
+        get_node_value(node)
+      else
+        nil
+      end
     end
     
     # turn file name with absolute path file name
