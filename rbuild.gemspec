@@ -14,8 +14,8 @@ spec = Gem::Specification.new do |s|
 EOF
   s.email = "ricky_gz_zheng@yahoo.co.nz"
   s.files = Dir.glob("example/**/*").delete_if {|item| item.include?(".svn")}
-  s.files = Dir.glob("lib/**/*.rb").delete_if {|item| item.include?(".svn")}
-  s.files = Dir.glob("README*")
+  s.files += Dir.glob("lib/**/*.rb").delete_if {|item| item.include?(".svn")}
+  s.files += Dir.glob("README*")
   s.require_path = 'lib'
   #s.autorequire = 'lib/rbuild.rb'
   s.has_rdoc = false
