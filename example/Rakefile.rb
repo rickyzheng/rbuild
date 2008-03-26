@@ -1,6 +1,6 @@
 require 'rubygems'
 begin
-  require 'rbuild'
+  require '../lib/rbuild'
 rescue Exception
   raise "\n\n**** Please install rbuild gem first ! ****\n\n"
 end

@@ -112,7 +112,7 @@ module RBuild
     
     def show_footer_bar
       puts "[[ " + footer_msg() + " ]]" if footer_msg()
-      puts "--------------------------------------------"
+      puts "------------------------------"
       puts "  (S)ave   (L)oad   (Q)uit\n"
     end
     
@@ -328,6 +328,12 @@ module RBuild
     
     # start menuconfig ...
     def menuconfig()
+      if have_error?
+        puts "--- Error ---"
+        puts "#{@errmsg}"
+        return
+      end
+      
       current = top_node()
       # STDIN.getc
       list_nodes, cursor = show_list_nodes(current)

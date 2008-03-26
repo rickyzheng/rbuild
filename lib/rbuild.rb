@@ -26,7 +26,7 @@ module RBuild
 
   DEFAULT_CONFIG_FILE = 'rb.config'
   DEFAULT_LOG_FILE = 'rbuild.log'
-
+  
   class RConfig
   
     include Menuconfig
@@ -95,6 +95,7 @@ module RBuild
       @conf
     end
     
+    # ---- External APIs ----
     def get_value(name)
       node = @conf[name]
       if node
@@ -113,6 +114,18 @@ module RBuild
         nil
       end
     end
+    
+    # return children under name
+    def get_children(name)
+      node = @conf[name]
+      if node
+        node[:children]
+      else
+        []
+      end
+    end
+    
+    # ---- end of External APIs ----
     
     # turn file name with absolute path file name
     def abs_file_name(name)
@@ -354,6 +367,9 @@ module RBuild
       targets
     end
     
+    # ----------------------------------------------------------------------------------------------
+    
+    
     # search plugin config keys from @conf, if found, call plugin.
     # the plugin name is part of config key: RBUILD_PLUGIN_XXX
     # if file is provided, use file as file name, otherwise use
@@ -375,7 +391,6 @@ module RBuild
       end
     end
     
-    # ----------------------------------------------------------------------------------------------
     private
     
     def anonymous_key()
@@ -394,7 +409,7 @@ module RBuild
       true
     end
     
-    # check node's dep depandancy, and node it self.
+    # check node's dep depandancy, and node itself.
     def dep_node_ok?(dep_node, exceptions = [])
         # no such node ? dep fail !
         return false unless dep_node
@@ -479,8 +494,8 @@ module RBuild
           Dir.chdir(@curpath)
           begin
             eval f.read
-          rescue SyntaxError => e
-            error "RConfig file syntax error?"
+          rescue Exception => e
+            error "RConfig file error? #{e.to_s}"
             error "from file: #{abs_file_name(@curpath + '/' + File.basename(fn))}"
             # error "Backtrace: #{e.backtrace.join("\n")}"
           end
@@ -603,7 +618,14 @@ module RBuild
     
     # log error message
     def error(desc)
+      @have_error = true
+      @errmsg ||= ""
+      @errmsg += "*** " + desc + "\n"
       log_to_file "Error: " + desc
+    end
+    
+    def have_error?
+      @have_error
     end
   
     # process current DSL calling
@@ -632,7 +654,6 @@ module RBuild
         @current = @stack.pop
       end
     end
-
     
     def windows?
       RUBY_PLATFORM =~ /win/

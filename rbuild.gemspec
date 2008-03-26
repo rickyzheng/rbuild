@@ -3,7 +3,7 @@ require 'rubygems'
 
 spec = Gem::Specification.new do |s|
   s.name = 'rbuild'
-  s.version = "0.1.0"
+  s.version = "0.1.1"
   s.required_ruby_version = ">= 1.8.1"
   s.author = 'Ricky Zheng'
   s.homepage = 'http://rbuild.sf.net'

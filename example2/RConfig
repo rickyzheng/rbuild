@@ -1,0 +1,40 @@
+title "Welcom to Ricky's cross build arm-elf tool :)"
+
+choice :GCC_VER => "GCC version:" do
+  range "3.2.2", "3.3.6", "4.0.1", "4.2.0", "4.2.3"
+  default "4.2.0"
+  # ftp://ftp.gnu.org/pub/gnu/gcc/gcc-$(version)/gcc-$(version).tar.bz2
+end
+
+group do
+  choice "Float point" do
+    default :SOFT_FLOAT
+    config :SOFT_FLOAT => "Using software float point library"
+    config :HARD_FLOAT => "Using hardware float point unit"
+  end
+end
+
+choice :BINUTILS_VER => "Binutils version:" do
+  range "2.7", "2.8", "2.9", "2.12", "2.13.2", "2.14", "2.15", "2.16.1", "2.17", "2.18"
+  default "2.17"
+  # ftp://ftp.gnu.org/pub/gnu/binutils/binutils-$(version).tar.gz
+end
+
+choice :NEWLIB_VER => "Newlib version:" do
+  range "1.6", "1.6.1", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0"
+  default "1.16.0"
+  # ftp://sources.redhat.com/pub/newlib/newlib-$(version).tar.gz
+end
+
+choice :PREFIX => "install dir" do
+  default "./gnutool"
+end
+
+choice :DOWNLOAD_DIR => "download dir" do
+  default "./dl"
+end
+
+
+
+
+
