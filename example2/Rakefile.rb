@@ -1,6 +1,6 @@
 require 'rubygems'
 begin
-  require 'rbuild'
+  require '../lib/rbuild'
 rescue Exception
   raise "\n\n**** Please install rbuild gem first ! ****\n\n"
 end
@@ -19,7 +19,7 @@ $DOWNLOAD_DIR = "./dl"
 $target="arm-elf"
 $prefix = "./#{$target}"
 $float_cflag = ""
-$language_cflags = "--enable-languages=c"
+$language_cflag = "--enable-languages=c"
 $add_gcc_cflags = ""
 $with_newlib = true
 
@@ -63,6 +63,7 @@ end
 
 task :menuconfig do
   rconf = RBuild::RConfig.new 'RConfig'
+  rconf.merge!
   rconf.menuconfig()
 end
 
@@ -74,7 +75,7 @@ task :prepare do
   $NEWLIB_VER = rconf.get_value(:NEWLIB_VER)
   $DOWNLOAD_DIR = File.expand_path(rconf.get_value(:DOWNLOAD_DIR))
   $prefix = File.expand_path(rconf.get_value(:PREFIX))
-  $float_cflag = rconf.hit?(:SOFT_FLOAT) ? "--with-float=soft" : ""
+  $float_cflag = rconf.hit?(:SOFT_FLOAT) ? "--with-float=soft" : nil
   if rconf.hit?(:ENABLE_CPP)
     $language_cflag += ",c++"
   end
@@ -95,6 +96,8 @@ task :diag => :prepare do
   puts "newlib ver: #{$NEWLIB_VER}"
   puts "download dir: #{$DOWNLOAD_DIR}"
   puts "install: #{$prefix}"
+  puts "soft float ? #{$float_cflag || "none"}"
+  puts "adddition cflags: #{$add_gcc_cflags} #{$language_cflag}"
 end
 
 task :build => [:binutils, :gcc] do

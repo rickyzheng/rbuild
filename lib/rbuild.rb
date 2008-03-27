@@ -77,7 +77,7 @@ module RBuild
     # otherwise use DEFAULT_CONFIG_FILE
     def merge!(config_file = nil)
       cfg_file_node = @conf[:RBUILD_SYS_CONFIG_LOAD_FILE]
-      if cfg_file_node && cfg_file_node[:no_export]
+      if cfg_file_node
         config_file ||= get_node_value(cfg_file_node).to_s
       end
       config_file ||= RBuild::DEFAULT_CONFIG_FILE
@@ -196,7 +196,7 @@ module RBuild
     # otherwise, use DEFAULT_CONFIG_FILE
     def save_config(config_file = nil)
       cfg_file_node = @conf[:RBUILD_SYS_CONFIG_SAVE_FILE]
-      if cfg_file_node && cfg_file_node[:no_export]
+      if cfg_file_node
         config_file ||= get_node_value(cfg_file_node).to_s
       end
       config_file ||= RBuild::DEFAULT_CONFIG_FILE
