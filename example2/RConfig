@@ -7,6 +7,16 @@ choice :GCC_VER => "GCC version:" do
 end
 
 group do
+  config :ENABLE_CPP => "Enable C++ language"
+  config :ARM_THUMB_INTERWORK => "Enable ARM/Thumb Interwork" do
+   default true
+  end
+  config :WITH_NEWLIB => "Using Newlib instead of CLib" do
+    default true
+  end
+  config :ENABLE_MULTILIB => "Enable multilib" do
+    default true
+  end
   choice "Float point" do
     default :SOFT_FLOAT
     config :SOFT_FLOAT => "Using software float point library"
@@ -21,13 +31,14 @@ choice :BINUTILS_VER => "Binutils version:" do
 end
 
 choice :NEWLIB_VER => "Newlib version:" do
+  depends :ENABLE_MULTILIB
   range "1.6", "1.6.1", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0"
   default "1.16.0"
   # ftp://sources.redhat.com/pub/newlib/newlib-$(version).tar.gz
 end
 
 choice :PREFIX => "install dir" do
-  default "./gnutool"
+  default "./arm-elf"
 end
 
 choice :DOWNLOAD_DIR => "download dir" do
