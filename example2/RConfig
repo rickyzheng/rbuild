@@ -1,12 +1,11 @@
-title "Welcom to Ricky's cross build arm-elf tool :)"
+#
+# arm-elf cross compiler toolchain configure script,
+# by Ricky Zheng <ricky_gz_zheng@yahoo.co.nz>
+#
 
-choice :GCC_VER => "GCC version:" do
-  range "3.2.2", "3.3.6", "4.0.1", "4.2.0", "4.2.3"
-  default "4.2.0"
-  # ftp://ftp.gnu.org/pub/gnu/gcc/gcc-$(version)/gcc-$(version).tar.bz2
-end
+title "Welcom to Ricky's arm-elf cross build configuration"
 
-group do
+group "Configure options" do
   config :ENABLE_CPP => "Enable C++ language"
   config :ARM_THUMB_INTERWORK => "Enable ARM/Thumb Interwork" do
    default true
@@ -17,6 +16,9 @@ group do
   config :ENABLE_MULTILIB => "Enable multilib" do
     default true
   end
+  config :DISABLE_THREAD => "Disable Thread" do
+    default true
+  end
   choice "Float point" do
     default :SOFT_FLOAT
     config :SOFT_FLOAT => "Using software float point library"
@@ -24,27 +26,41 @@ group do
   end
 end
 
-choice :BINUTILS_VER => "Binutils version:" do
-  range "2.7", "2.8", "2.9", "2.12", "2.13.2", "2.14", "2.15", "2.16.1", "2.17", "2.18"
-  default "2.17"
-  # ftp://ftp.gnu.org/pub/gnu/binutils/binutils-$(version).tar.gz
+group "Package version" do
+  choice :GCC_VER => "GCC version:" do
+    range "3.2.2", "3.3.6", "4.0.1", "4.2.0", "4.2.3"
+    default "4.2.0"
+    # ftp://ftp.gnu.org/pub/gnu/gcc/gcc-$(version)/gcc-$(version).tar.bz2
+  end
+
+  choice :BINUTILS_VER => "Binutils version:" do
+    range "2.7", "2.8", "2.9", "2.12", "2.13.2", "2.14", "2.15", "2.16.1", "2.17", "2.18"
+    default "2.17"
+    # ftp://ftp.gnu.org/pub/gnu/binutils/binutils-$(version).tar.gz
+  end
+
+  choice :NEWLIB_VER => "Newlib version:" do
+    depends :ENABLE_MULTILIB
+    range "1.6", "1.6.1", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0"
+    default "1.16.0"
+    # ftp://sources.redhat.com/pub/newlib/newlib-$(version).tar.gz
+  end
 end
 
-choice :NEWLIB_VER => "Newlib version:" do
-  depends :ENABLE_MULTILIB
-  range "1.6", "1.6.1", "1.7.0", "1.7.1", "1.8.0", "1.8.1", "1.8.2", "1.9.0", "1.10.0", "1.11.0", "1.12.0", "1.13.0", "1.14.0", "1.15.0", "1.16.0"
-  default "1.16.0"
-  # ftp://sources.redhat.com/pub/newlib/newlib-$(version).tar.gz
-end
+group "Miscellaneous" do
+  choice :PREFIX => "install dir" do
+    default "./arm-elf"
+  end
 
-choice :PREFIX => "install dir" do
-  default "./arm-elf"
+  choice :DOWNLOAD_DIR => "download dir" do
+    default "./dl"
+  end
+  
+  config :CHECK_INTEGRITY => "check downloaded package integrity" do
+    default true
+  end
+  
 end
-
-choice :DOWNLOAD_DIR => "download dir" do
-  default "./dl"
-end
-
 
 
 
