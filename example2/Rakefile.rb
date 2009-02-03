@@ -120,6 +120,8 @@ task :prepare do
     $add_gcc_options += " --disable-thread"
     $add_bin_options += " --disable-thread"
   end
+  $parallel_jobs = rconf.get_value(:PARALLEL_JOBS)
+  $parallel_jobs = 1 unless $parallel_jobs and $parallel_jobs != ""
 end
 
 task :diag => :prepare do
@@ -146,8 +148,8 @@ task :gcc => [:binutils] do
   Dir.chdir $CURDIR
   shell "mkdir -p build/gcc"
   Dir.chdir "build/gcc"
-  shell "#{$CURDIR}/src/gcc-#{$GCC_VER}/configure #{$gcc_add_cflags} -v 2>&1 | tee gcc_configure.log"
-  shell "make all 2>&1 | tee gcc_make.log"
+  shell "#{$CURDIR}/src/gcc-#{$GCC_VER}/configure #{$add_gcc_options} -v 2>&1 | tee gcc_configure.log"
+  shell "make all -j #{$parallel_jobs} 2>&1 | tee gcc_make.log"
   shell "make install 2>&1 | tee gcc_install.log"
   Dir.chdir $CURDIR
 end
@@ -158,7 +160,7 @@ task :binutils => :download do
   shell "mkdir -p build/binutils"
   Dir.chdir "build/binutils"
   shell "#{$CURDIR}/src/binutils-#{$BINUTILS_VER}/configure #{$add_bin_options} -v 2>&1 | tee binutils_configure.log"
-  shell "make all 2>&1 | tee binutils_make.log"
+  shell "make all -j #{$parallel_jobs} 2>&1 | tee binutils_make.log"
   shell "make install 2>&1 | tee binutils_install.log"
   Dir.chdir $CURDIR
 end

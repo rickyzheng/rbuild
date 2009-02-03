@@ -59,6 +59,11 @@ group "Miscellaneous" do
   config :CHECK_INTEGRITY => "check downloaded package integrity" do
     default true
   end
+
+  choice :PARALLEL_JOBS => "Parallel build jobs" do
+    range 1..4
+    default 1 
+  end
   
 end
 
