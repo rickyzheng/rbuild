@@ -1,8 +1,12 @@
 require 'rubygems'
 begin
-  require '../lib/rbuild'
+  require 'rbuild'
 rescue Exception
-  raise "\n\n**** Please install rbuild gem first ! ****\n\n"
+  begin
+    load '../lib/rbuild.rb'
+  rescue Exception
+    raise "\n\n**** Please install rbuild gem first ! ****\n\n"
+  end
 end
 
 task :menuconfig do
