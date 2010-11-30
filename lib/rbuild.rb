@@ -381,7 +381,7 @@ module RBuild
           @dirstack << @curpath
           @curpath = @top_rconfig_path
           Dir.chdir @curpath
-          if self.methods.include?(plugin)
+          if self.methods.include?(plugin.to_sym)
             self.send(plugin, file || get_node_value(node).to_s)
           else
             warning "plugin \"#{plugin}\" not installed ?"
@@ -656,7 +656,7 @@ module RBuild
     end
     
     def windows?
-      RUBY_PLATFORM =~ /win/
+      RUBY_PLATFORM =~ /(win|mingw)/
     end
 
     # set node's value, the value must not be 'false' or 'nil'

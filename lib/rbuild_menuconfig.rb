@@ -15,20 +15,35 @@ module RBuild
   module Menuconfig
   
     private
-    
-    KEY_SPACE = 32
-    KEY_ESC = 27
-    if RUBY_PLATFORM =~ /win/
-      KEY_RIGHT = 77
-      KEY_LEFT = 75
-      KEY_UP = 72
-      KEY_DOWN = 80
-    else
-      KEY_RIGHT = ?C
-      KEY_LEFT = ?D
-      KEY_UP = ?A
-      KEY_DOWN = ?B
-    end
+    if RUBY_VERSION >= "1.9.0"
+		KEY_SPACE = 32.chr
+		KEY_ESC = 27.chr
+		if RUBY_PLATFORM =~ /(win|mingw)/
+		  KEY_RIGHT = 77.chr
+		  KEY_LEFT = 75.chr
+		  KEY_UP = 72.chr
+		  KEY_DOWN = 80.chr
+		else
+		  KEY_RIGHT = (?C).chr
+		  KEY_LEFT = (?D).chr
+		  KEY_UP = (?A).chr
+		  KEY_DOWN = (?B).chr
+		end
+	else
+		KEY_SPACE = 32
+		KEY_ESC = 27
+		if RUBY_PLATFORM =~ /(win|mingw)/
+		  KEY_RIGHT = 77
+		  KEY_LEFT = 75
+		  KEY_UP = 72
+		  KEY_DOWN = 80
+		else
+		  KEY_RIGHT = ?C
+		  KEY_LEFT = ?D
+		  KEY_UP = ?A
+		  KEY_DOWN = ?B
+		end
+	end
     
     # conver the viewable nodes list to navable nodes list
     def list_nodes_to_navable(list)
@@ -116,14 +131,6 @@ module RBuild
       puts "  (S)ave   (L)oad   (Q)uit\n"
     end
     
-    def get_dbg_key
-      @dbg_idx ||= 0
-      @dbg_ks ||= [KEY_RIGHT, KEY_DOWN, KEY_LEFT, KEY_RIGHT]
-      k = @dbg_ks[@dbg_idx]
-      @dbg_idx += 1
-      k
-    end
-    
     # read key press without echo ...
     def getch
 
@@ -134,22 +141,23 @@ module RBuild
       if windows?
         require 'Win32API'
         fun = Win32API.new("crtdll", "_getch", [], 'L')
-        fun.call
+        c = fun.call
+		if RUBY_VERSION >= "1.9.0"
+		  c.chr
+		else
+		  c
+		end
       else
         require 'io/wait'
-        if false && DBG_GETCH
-          get_dbg_key()
-        else
-          state = `stty -g`
-          begin
-            system "stty raw -echo cbreak isig"
-            until STDIN.ready?
-              sleep 0.1
-            end
-            s = STDIN.read_nonblock(3)
-          ensure
-            system "stty #{state}"
+        state = `stty -g`
+        begin
+          system "stty raw -echo cbreak isig"
+          until STDIN.ready?
+            sleep 0.1
           end
+          s = STDIN.read_nonblock(3)
+        ensure
+          system "stty #{state}"
         end
         s[s.size - 1]
       end

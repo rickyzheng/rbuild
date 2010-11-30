@@ -3,7 +3,7 @@ require 'rubygems'
 
 spec = Gem::Specification.new do |s|
   s.name = 'rbuild'
-  s.version = "0.1.1"
+  s.version = "0.1.3"
   s.required_ruby_version = ">= 1.8.1"
   s.author = 'Ricky Zheng'
   s.homepage = 'http://rbuild.sf.net'
@@ -21,8 +21,6 @@ EOF
   s.require_path = 'lib'
   #s.autorequire = 'lib/rbuild.rb'
   s.has_rdoc = false
-  #s.signing_key = '/Users/chadfowler/cvs/rubygems/gem-private_key.pem'
-  #s.cert_chain  = ['/Users/chadfowler/cvs/rubygems/gem-public_cert.pem']
 end
 
 if $0==__FILE__

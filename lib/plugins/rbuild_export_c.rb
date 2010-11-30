@@ -17,7 +17,7 @@ module RBuild
   
     public
     
-    # will be actived by :RBUILD_PLUGIN_EXP_C_HEADER 
+    # will be activated by :RBUILD_PLUGIN_EXP_C_HEADER 
     def exp_c_header_file(file)
       headers = []
       headers << "/* This file is created by RBuild - a KBuild like configure/build\n"
