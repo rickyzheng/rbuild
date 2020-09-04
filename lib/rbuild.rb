@@ -656,7 +656,7 @@ module RBuild
     end
     
     def windows?
-      RUBY_PLATFORM =~ /(win|mingw)/
+      RUBY_PLATFORM =~ /(win32|win64|mingw|mswin|windows)/
     end
 
     # set node's value, the value must not be 'false' or 'nil'
